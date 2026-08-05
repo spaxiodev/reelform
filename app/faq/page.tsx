@@ -1,0 +1,117 @@
+import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { CONTACT_EMAIL } from "@/components/SiteFooter";
+
+export const metadata = { title: "FAQ — Reelform" };
+
+export default function FaqPage() {
+  return (
+    <LegalShell label="HELP DESK" title="Frequently asked questions">
+      <LegalSection heading="What is Reelform?">
+        <p>
+          Reelform builds video-first websites. You describe your business, direct a cinematic hero
+          video with Seedance, and Claude builds a complete single-page site around the footage —
+          all in a few minutes, iterated through chat.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="How do credits work?">
+        <p>
+          Everything runs on credits: video renders and site builds each cost a fixed amount shown
+          before you confirm. One credit is roughly $0.01 of value. Every new account starts with
+          150 free credits.
+        </p>
+        <p>
+          Subscription credits refill monthly; top-up credits never expire. You can see every
+          credit movement under{" "}
+          <a href="/account/credits" className="text-primary underline">
+            Account → Credits &amp; activity
+          </a>
+          .
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="What happens if a generation fails?">
+        <p>
+          Credits for failed video renders or site builds are refunded to your balance
+          automatically. The refund appears in your credit activity within a minute or two.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="What's the difference between plans and top-ups?">
+        <p>
+          Plans are monthly subscriptions with the best credit rate — ideal if you build regularly.
+          Top-ups are one-time purchases at a slightly higher rate, and those credits never expire.
+          You can mix both freely.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Where do I find my invoices?">
+        <p>
+          Every payment — subscriptions and top-ups — has a downloadable PDF invoice under{" "}
+          <a href="/account/billing" className="text-primary underline">
+            Account → Billing &amp; invoices
+          </a>
+          , along with your full payment history and total spend.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="How do I cancel or change my plan?">
+        <p>
+          Open the Stripe billing portal from{" "}
+          <a href="/account/billing" className="text-primary underline">
+            Account → Billing &amp; invoices
+          </a>{" "}
+          → &ldquo;Manage subscription&rdquo;. Changes take effect at the end of the current billing
+          period; credits already granted stay on your account.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Can I get a refund?">
+        <p>
+          Failed generations are always refunded in credits automatically. For money refunds, see
+          our{" "}
+          <a href="/refunds" className="text-primary underline">
+            Refund Policy
+          </a>{" "}
+          — unused top-ups and accidental charges are typically refundable within 14 days.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Do I own the videos and sites I create?">
+        <p>
+          Yes. You own the sites and videos generated for your account and can export, host, and
+          use them commercially. See the{" "}
+          <a href="/terms" className="text-primary underline">
+            Terms of Service
+          </a>{" "}
+          for details.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="How do I delete my account?">
+        <p>
+          Go to{" "}
+          <a href="/account/security" className="text-primary underline">
+            Account → Security
+          </a>{" "}
+          → Danger zone. Deletion removes your profile, productions, videos, and remaining credits,
+          and cancels any active subscription. It cannot be undone.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Still stuck?">
+        <p>
+          Email us at{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline font-medium">
+            {CONTACT_EMAIL}
+          </a>{" "}
+          or visit the{" "}
+          <a href="/contact" className="text-primary underline">
+            contact page
+          </a>
+          . We typically respond within 2 business days.
+        </p>
+      </LegalSection>
+    </LegalShell>
+  );
+}

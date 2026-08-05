@@ -1,26 +1,337 @@
 @import "tailwindcss";
 
+/* Tokens from DESIGN.md (HP-inspired system): white canvas, ink text,
+   Electric Blue as the lone signal color, cloud/fog bands, hairline borders. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #ffffff; /* canvas */
+  --bg-raise: #faf5f1; /* warm cream band */
+  --panel: #ffffff; /* paper (cards lift via border/shadow) */
+  --ink: #2a1a13; /* warm espresso — replaces black for text + dark surfaces */
+  --ink-soft: #3a271d; /* slightly lifted espresso for layered dark bands */
+  --muted: #4b3a33; /* warm charcoal — secondary copy */
+  --faint: #766159; /* warm graphite — fine print, hints */
+  --primary: #dd4f26; /* sunset coral — CTAs, links, accents */
+  --primary-deep: #b23a17; /* pressed / deep coral text */
+  --primary-soft: #ffd8c6; /* warm peach — soft chips */
+  --coral: #ff6a3d; /* bloom-coral — record dot / sale accents */
+  --danger: #b3262b; /* bloom-deep — errors */
+  --line: #efe6df; /* warm hairline */
+  --line-strong: #d3c4ba; /* warm steel */
+  /* Softer, layered lift — reads as polished rather than a hard drop shadow */
+  --shadow-lift: 0 1px 2px rgba(26, 26, 26, 0.04), 0 6px 20px rgba(26, 26, 26, 0.07);
+  --shadow-btn: 0 1px 2px rgba(221, 79, 38, 0.2), 0 2px 8px rgba(221, 79, 38, 0.18);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-raise: var(--bg-raise);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-soft: var(--primary-soft);
+  --color-coral: var(--coral);
+  --color-danger: var(--danger);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --font-display: var(--font-manrope);
+  --font-mono: var(--font-manrope); /* single-family system */
+  /* Softened radius scale — nudges every inline rounded-* utility site-wide */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 1rem; /* 16px */
+  --radius-2xl: 1.25rem; /* 20px */
+  --radius-3xl: 1.75rem; /* 28px */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-manrope), Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.4;
+}
+
+::selection {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 500; /* the system holds weight 500 at every display size */
+  line-height: 1.05;
+}
+
+/* ── Reusable primitives ─────────────────────────────────────────── */
+
+/* Eyebrow / caption label (caption-bold role) */
+.mono-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* button-primary: Electric Blue fill, rounded, uppercase 0.7px tracking */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-btn);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background: var(--primary-deep);
+  box-shadow: 0 2px 6px rgba(221, 79, 38, 0.24), 0 6px 18px rgba(221, 79, 38, 0.22);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  background: var(--primary-deep);
+  transform: translateY(0);
+  box-shadow: var(--shadow-btn);
+}
+.btn-primary:disabled {
+  background: var(--line-strong);
+  color: #ffffff;
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* button-outline-ink: white fill, ink text, ink border */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border-radius: 10px;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 4px 14px rgba(26, 26, 26, 0.06);
+}
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* card-product: white, generous radius, soft lift */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lift);
+}
+
+/* text-input: rounded, steel border, ink border + soft ring on focus */
+.field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--ink);
+  font-size: 0.925rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(221, 79, 38, 0.14);
+}
+.field::placeholder {
+  color: var(--faint);
+}
+
+/* Hairline section divider (replaces the old film-strip motif) */
+.perf-strip {
+  height: 1px;
+  background: var(--line);
+}
+
+/* Blinking record dot — bloom-coral */
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+  animation: rec-blink 1.4s ease-in-out infinite;
+}
+@keyframes rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Staggered page-load reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: reveal-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes reveal-up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scroll-triggered reveal — toggled by IntersectionObserver (Reveal.tsx) */
+.reveal-scroll {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: opacity, transform;
+}
+.reveal-scroll.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-scroll {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Bouncing scroll cue in the hero */
+.scroll-cue span {
+  animation: cue-bob 1.6s ease-in-out infinite;
+}
+@keyframes cue-bob {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+/* Scrolling ticker — styled as a dark utility strip (ink slab) */
+.ticker-band {
+  background: var(--ink);
+  color: #ffffff;
+}
+.ticker {
+  display: flex;
+  gap: 3rem;
+  white-space: nowrap;
+  animation: ticker-scroll 28s linear infinite;
+}
+@keyframes ticker-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Thin blue progress bar while streaming */
+.stream-bar {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  background-size: 200% 100%;
+  animation: stream-slide 1.2s linear infinite;
+}
+@keyframes stream-slide {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Reference-footage strip — snap scrolling, no visible scrollbar */
+.reel-strip {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.reel-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Sky bands (viewmax-inspired) ────────────────────────────────── */
+/* Immersive sunset gradient with soft warm clouds pooling toward the base. */
+.sky-band {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(70% 55% at 12% 112%, rgba(255, 248, 242, 0.95), transparent 62%),
+    radial-gradient(60% 48% at 88% 116%, rgba(255, 246, 238, 0.9), transparent 62%),
+    radial-gradient(48% 42% at 52% 122%, rgba(255, 244, 235, 0.85), transparent 60%),
+    linear-gradient(180deg, #d8451f 0%, #ec6a3c 42%, #f7ab7e 76%, #fde9dc 100%);
+}
+/* Subtle perspective grid floor for feature bands */
+.grid-floor::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60%;
+  z-index: -1;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transform: perspective(520px) rotateX(62deg);
+  transform-origin: bottom center;
+  -webkit-mask-image: linear-gradient(transparent, #000 70%);
+  mask-image: linear-gradient(transparent, #000 70%);
+  pointer-events: none;
+}
+
+/* Frosted floating pill nav */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(1.6) blur(16px);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 30px rgba(26, 26, 26, 0.12);
+}
+
+/* Signature chevron-decoration: Electric Blue parallelogram (hero only) —
+   softened corners keep the signature skew without the hard points */
+.chevron-slash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 56px;
+  background: var(--primary);
+  transform: skewX(-24deg);
+  border-radius: 8px;
+}
+@media (max-width: 767px) {
+  .chevron-slash {
+    display: none;
+  }
 }
