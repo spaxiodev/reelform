@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppHeader } from "@/components/AppHeader";
 import { AccountBadge } from "@/components/AccountBadge";
 import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
@@ -38,24 +39,15 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-raise">
-      <header className="bg-bg flex items-center justify-between px-6 md:px-10 py-5 border-b border-line">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="rec-dot" aria-hidden />
-          <span className="font-semibold tracking-tight text-lg">
-            Reel<span className="text-primary">form</span>
-          </span>
-        </Link>
-        <nav className="flex items-center gap-6">
-          <Link href="/showcase" className="text-sm text-muted hover:text-ink transition-colors">
-            Showcase
-          </Link>
-          <Link href="/pricing" className="text-sm text-muted hover:text-ink transition-colors">
-            Pricing
-          </Link>
-          <AccountBadge />
-          <SignOutButton />
-        </nav>
-      </header>
+      <AppHeader
+        links={[
+          { href: "/showcase", label: "Showcase" },
+          { href: "/pricing", label: "Pricing" },
+        ]}
+      >
+        <AccountBadge />
+        <SignOutButton />
+      </AppHeader>
 
       <main id="main" className="flex-1 px-6 md:px-10 py-10 max-w-6xl mx-auto w-full">
         <div className="flex flex-wrap items-end justify-between gap-6">
@@ -117,9 +109,9 @@ export default async function DashboardPage() {
               </p>
               <ol className="mt-6 space-y-3">
                 {[
-                  "Describe the website — who it's for and what it should say",
-                  "Direct the video — Seedance renders it while you watch",
-                  "Send to Claude — a complete site, streamed in live",
+                  "Describe the website: who it's for and what it should say",
+                  "Direct the video: it renders while you watch",
+                  "Send to Claude: a complete site, streamed in live",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-muted">
                     <span className="mt-0.5 w-5 h-5 rounded-full bg-primary-soft text-primary-deep text-xs font-bold flex items-center justify-center shrink-0">
@@ -164,11 +156,11 @@ export default async function DashboardPage() {
         )}
       </main>
 
-      {/* Inspiration reel — same reference footage as the home page */}
+      {/* Inspiration reel: same reference footage as the home page */}
       <ReferenceReel
-        eyebrow="INSPIRATION — SHOT ON REELFORM"
+        eyebrow="INSPIRATION · SHOT ON REELFORM"
         title="Need a starting point? Steal a shot."
-        subtitle="Reference footage generated with Seedance — study the mood, motion and lighting, then direct your own take in the studio."
+        subtitle="Reference footage generated with our video models. Study the mood, motion and lighting, then direct your own take in the studio."
         action={
           <Link
             href="/showcase"

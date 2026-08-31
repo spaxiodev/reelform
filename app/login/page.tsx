@@ -41,7 +41,7 @@ function LoginForm() {
       setError(error.message);
       setBusy(false);
     }
-    // On success the browser leaves for Google — keep the button disabled.
+    // On success the browser leaves for Google, keep the button disabled.
   }
 
   async function submit(e: React.FormEvent) {
@@ -64,7 +64,7 @@ function LoginForm() {
         .ilike("username", handle)
         .maybeSingle();
       if (taken) {
-        setError(`@${handle} is already taken — try another username.`);
+        setError(`@${handle} is already taken. Try another username.`);
         setBusy(false);
         return;
       }
@@ -79,7 +79,7 @@ function LoginForm() {
       if (error) {
         setError(error.message);
       } else if (data.session) {
-        // Email confirmation is off — the account is live immediately.
+        // Email confirmation is off: the account is live immediately.
         trackEvent("signup_completed", { method: "password", confirmed: true });
         router.push(next);
         router.refresh();
@@ -120,7 +120,7 @@ function LoginForm() {
             {mode === "signup" ? "Start your first take" : "Back to the cutting room"}
           </h1>
           {mode === "signup" && (
-            <p className="mt-2 text-muted">Your first website is free — a hero video and a full site build.</p>
+            <p className="mt-2 text-muted">Your first website is free: a hero video and a full site build.</p>
           )}
 
           <button
@@ -195,7 +195,7 @@ function LoginForm() {
                     onChange={(e) => setUsername(e.target.value)}
                   />
                   <p className="mt-1.5 text-xs text-faint">
-                    Your public handle — shown on everything you publish and share.
+                    Your public handle, shown on everything you publish and share.
                   </p>
                 </div>
               </>

@@ -48,7 +48,7 @@ export default async function BillingPage() {
               {planInfo && (
                 <>
                   {" "}
-                  — ${planInfo.priceUsd}/mo, {planInfo.creditsPerMonth.toLocaleString()} credits monthly
+                  · ${planInfo.priceUsd}/mo, {planInfo.creditsPerMonth.toLocaleString()} credits monthly
                 </>
               )}
               {profile?.plan_status && profile.plan_status !== "active" && (
@@ -101,7 +101,7 @@ export default async function BillingPage() {
           <div className="mt-6 py-8 text-center">
             <p className="text-sm text-faint">
               {profile?.stripe_customer_id && billing === null
-                ? "Billing history is temporarily unavailable — please try again shortly."
+                ? "Billing history is temporarily unavailable. Please try again shortly."
                 : "No payments yet. Your charges and invoices will appear here after your first purchase."}
             </p>
             <Link href="/pricing" className="mt-4 inline-block btn-ghost">
@@ -161,7 +161,7 @@ export default async function BillingPage() {
                           View receipt
                         </a>
                       ) : (
-                        <span className="text-faint">—</span>
+                        <span className="text-faint">-</span>
                       )}
                     </td>
                   </tr>

@@ -27,7 +27,7 @@ export function DeleteAccountButton({ email }: { email: string }) {
       router.push("/");
       router.refresh();
     } catch {
-      toast("Network error — please try again.", "error");
+      toast("Network error. Please try again.", "error");
       setBusy(false);
     }
   }

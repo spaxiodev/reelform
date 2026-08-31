@@ -4,7 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 
 // Permanently deletes the signed-in user's account. Cancels any active Stripe
-// subscription first, then removes the auth user — profiles, projects,
+// subscription first, then removes the auth user, profiles, projects,
 // messages, and the credit ledger all cascade from auth.users.
 export async function POST() {
   const supabase = await createSupabaseServer();

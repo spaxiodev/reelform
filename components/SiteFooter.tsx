@@ -48,7 +48,7 @@ export function SiteFooter() {
               </span>
             </Link>
             <p className="mt-3 text-sm text-white/60 max-w-xs leading-relaxed">
-              AI video-first websites. Direct the shot with Seedance, let Claude build the site
+              AI video-first websites. Direct the shot with any frontier video model, let Claude build the site
               around it.
             </p>
           </div>

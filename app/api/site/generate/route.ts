@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "site_generate");
   if (limited) return limited;
 
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
         if (result.refused || !result.html.trim()) {
           await refund();
           controller.enqueue(
-            encoder.encode(`${ERROR_SENTINEL}The model declined this request. You have not been charged — try rephrasing.`)
+            encoder.encode(`${ERROR_SENTINEL}The model declined this request. You have not been charged, so try rephrasing.`)
           );
           controller.close();
           return;
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         await refund().catch(() => {});
         const message = err instanceof Error ? err.message : "Generation failed";
-        controller.enqueue(encoder.encode(`${ERROR_SENTINEL}${message} — you have not been charged.`));
+        controller.enqueue(encoder.encode(`${ERROR_SENTINEL}${message} You have not been charged.`));
         controller.close();
       }
     },

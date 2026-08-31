@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Reelform — AI video-first website builder",
+    name: "Reelform · AI video-first website builder",
     short_name: "Reelform",
     description:
       "Direct a cinematic AI hero video, then let Claude build a complete website around it.",

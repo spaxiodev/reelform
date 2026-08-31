@@ -11,7 +11,7 @@ export async function register() {
 
 // Server-side errors (route handlers, RSC renders, the proxy) land here.
 // Vercel captures stderr automatically, so structured logging is enough to
-// make these greppable — swap the console call for a Sentry/Axiom client if
+// make these greppable, swap the console call for a Sentry/Axiom client if
 // you later want alerting.
 export const onRequestError: Instrumentation.onRequestError = (err, request, context) => {
   const message = err instanceof Error ? err.message : String(err);

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "project_create");
   if (limited) return limited;
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : "Untitled project";
   const industry = typeof body.industry === "string" && body.industry.trim() ? body.industry.trim() : null;
-  // Chosen up front in the new-production dialog — it shapes the whole build.
+  // Chosen up front in the new-production dialog, it shapes the whole build.
   const videoMode = body.videoMode === "scrub" ? "scrub" : "loop";
 
   const { data, error } = await supabase

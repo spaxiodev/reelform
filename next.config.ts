@@ -4,7 +4,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 // React's development build uses eval() for debugging features (reconstructing
 // callstacks across environments). It never does so in production, so
-// 'unsafe-eval' is granted to `next dev` only — shipping it would hand any
+// 'unsafe-eval' is granted to `next dev` only, shipping it would hand any
 // injected string a way to execute.
 const scriptSrc = isDev
   ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
@@ -19,7 +19,7 @@ const CSP = [
   // 'unsafe-inline' is required, not lazy: Next streams its RSC payload through
   // an inline `self.__next_f.push(...)` script, so without it hydration data
   // never arrives and every page ships dead. Removing it means generating a
-  // per-request nonce in proxy.ts and threading it through — worth doing, but
+  // per-request nonce in proxy.ts and threading it through, worth doing, but
   // it is a change with real breakage risk, not a one-line tightening.
   scriptSrc,
   // Generated sites embed footage from Supabase Storage; the reference reel
@@ -36,7 +36,7 @@ const CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  // Nothing here should ever be framed by a third party — clickjacking the
+  // Nothing here should ever be framed by a third party, clickjacking the
   // billing and publish controls would be the payoff.
   "frame-ancestors 'none'",
   "upgrade-insecure-requests",

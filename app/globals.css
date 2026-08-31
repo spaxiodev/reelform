@@ -6,19 +6,19 @@
   --bg: #ffffff; /* canvas */
   --bg-raise: #faf5f1; /* warm cream band */
   --panel: #ffffff; /* paper (cards lift via border/shadow) */
-  --ink: #2a1a13; /* warm espresso — replaces black for text + dark surfaces */
+  --ink: #2a1a13; /* warm espresso, replaces black for text + dark surfaces */
   --ink-soft: #3a271d; /* slightly lifted espresso for layered dark bands */
-  --muted: #4b3a33; /* warm charcoal — secondary copy */
-  --faint: #766159; /* warm graphite — fine print, hints */
-  --primary: #dd4f26; /* sunset coral — CTAs, links, accents */
+  --muted: #4b3a33; /* warm charcoal, secondary copy */
+  --faint: #766159; /* warm graphite, fine print, hints */
+  --primary: #dd4f26; /* sunset coral, CTAs, links, accents */
   --primary-deep: #b23a17; /* pressed / deep coral text */
-  --primary-soft: #ffd8c6; /* warm peach — soft chips */
-  --coral: #ff6a3d; /* bloom-coral — record dot / sale accents */
-  --danger: #b3262b; /* bloom-deep — errors */
-  --live: #1f8f4e; /* muted forest — provider up; the only green in the system */
+  --primary-soft: #ffd8c6; /* warm peach, soft chips */
+  --coral: #ff6a3d; /* bloom-coral, record dot / sale accents */
+  --danger: #b3262b; /* bloom-deep, errors */
+  --live: #1f8f4e; /* muted forest, provider up; the only green in the system */
   --line: #efe6df; /* warm hairline */
   --line-strong: #d3c4ba; /* warm steel */
-  /* Softer, layered lift — reads as polished rather than a hard drop shadow */
+  /* Softer, layered lift, reads as polished rather than a hard drop shadow */
   --shadow-lift: 0 1px 2px rgba(26, 26, 26, 0.04), 0 6px 20px rgba(26, 26, 26, 0.07);
   --shadow-btn: 0 1px 2px rgba(221, 79, 38, 0.2), 0 2px 8px rgba(221, 79, 38, 0.18);
 }
@@ -41,7 +41,7 @@
   --color-line-strong: var(--line-strong);
   --font-display: var(--font-manrope);
   --font-mono: var(--font-manrope); /* single-family system */
-  /* Softened radius scale — nudges every inline rounded-* utility site-wide */
+  /* Softened radius scale, nudges every inline rounded-* utility site-wide */
   --radius-sm: 0.375rem; /* 6px */
   --radius-md: 0.5rem; /* 8px */
   --radius-lg: 0.75rem; /* 12px */
@@ -60,6 +60,10 @@ body {
   font-family: var(--font-manrope), Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   line-height: 1.4;
+  /* Stop iOS from inflating body text when a phone is turned to landscape,
+     which otherwise re-flows every carefully sized heading on the page. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 ::selection {
@@ -176,6 +180,17 @@ h3 {
 .field::placeholder {
   color: var(--faint);
 }
+/* Safari on iOS zooms the whole page in when a focused input's text is under
+   16px, and never zooms back out. Touch devices get the larger text so the
+   layout holds still; pointer devices keep the tighter 14.8px. */
+@media (pointer: coarse) {
+  .field,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
 
 /* Shot-length slider. Native range styling is unusable across browsers, so the
    track and thumb are drawn by hand in the site's own palette. */
@@ -229,7 +244,7 @@ h3 {
   background: var(--line);
 }
 
-/* Blinking record dot — bloom-coral */
+/* Blinking record dot, bloom-coral */
 .rec-dot {
   width: 9px;
   height: 9px;
@@ -256,7 +271,7 @@ h3 {
   }
 }
 
-/* Scroll-triggered reveal — toggled by IntersectionObserver (Reveal.tsx) */
+/* Scroll-triggered reveal, toggled by IntersectionObserver (Reveal.tsx) */
 .reveal-scroll {
   opacity: 0;
   transform: translateY(28px);
@@ -291,7 +306,7 @@ h3 {
   }
 }
 
-/* Scrolling ticker — styled as a dark utility strip (ink slab) */
+/* Scrolling ticker, styled as a dark utility strip (ink slab) */
 .ticker-band {
   background: var(--ink);
   color: #ffffff;
@@ -321,7 +336,17 @@ h3 {
   }
 }
 
-/* Reference-footage strip — snap scrolling, no visible scrollbar */
+/* A row that can scroll sideways when it runs out of width, without the
+   scrollbar itself becoming part of the design. Used by the studio's action
+   clusters, which have more buttons than a phone has room for. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reference-footage strip, snap scrolling, no visible scrollbar */
 .reel-strip {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -367,7 +392,7 @@ h3 {
   box-shadow: 0 8px 30px rgba(26, 26, 26, 0.12);
 }
 
-/* Signature chevron-decoration: Electric Blue parallelogram (hero only) —
+/* Signature chevron-decoration: Electric Blue parallelogram (hero only),
    softened corners keep the signature skew without the hard points */
 .chevron-slash {
   position: absolute;
@@ -384,7 +409,7 @@ h3 {
   }
 }
 
-/* Loading placeholder — a slow warm sweep rather than a grey pulse, so it
+/* Loading placeholder, a slow warm sweep rather than a grey pulse, so it
    sits inside the palette instead of fighting it. */
 .skeleton {
   background: linear-gradient(
@@ -438,7 +463,7 @@ h3 {
 }
 
 /* A single, consistent keyboard focus ring. Scoped to :focus-visible so it
-   never fires on mouse clicks — the reason the app previously relied on
+   never fires on mouse clicks, the reason the app previously relied on
    outline:none in places. */
 :focus-visible {
   outline: 2px solid var(--primary);
@@ -454,7 +479,7 @@ h3 {
 /* ── Reduced motion ──────────────────────────────────────────────── */
 /* Vestibular safety net: anything decorative and looping stops, and the
    scroll-driven transforms collapse to their end state. The scroll-scrub
-   preview keeps working — seeking is the content, not an effect — but its
+   preview keeps working, seeking is the content, not an effect, but its
    ambient companions go still. */
 @media (prefers-reduced-motion: reduce) {
   html {

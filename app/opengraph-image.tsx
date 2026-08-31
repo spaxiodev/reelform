@@ -1,11 +1,11 @@
 import { ImageResponse } from "next/og";
 
 // Inherited by every route that doesn't define its own OG image.
-export const alt = "Reelform — direct an AI hero video, let Claude build the site around it";
+export const alt = "Reelform: direct an AI hero video, let Claude build the site around it";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Brand tokens mirrored from app/globals.css — ImageResponse renders in an
+// Brand tokens mirrored from app/globals.css. ImageResponse renders in an
 // isolated Satori context with no access to the stylesheet.
 const INK = "#2a1a13";
 const PRIMARY = "#dd4f26";
@@ -70,7 +70,7 @@ export default function Image() {
           </div>
         </div>
 
-        {/* Progress bar — nods to the scroll-scrub playback mode */}
+        {/* Progress bar: nods to the scroll-scrub playback mode */}
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div
             style={{

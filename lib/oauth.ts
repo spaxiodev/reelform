@@ -7,7 +7,7 @@ import type { Provider } from "./integrations";
 //
 // The state and PKCE verifier have to survive a round trip through the
 // provider, so they live in short-lived httpOnly cookies rather than in the
-// URL — a `state` the browser cannot read is a `state` an attacker cannot
+// URL, a `state` the browser cannot read is a `state` an attacker cannot
 // forge into a CSRF'd connection.
 
 const TTL_SECONDS = 600; // ten minutes to finish an authorization
@@ -54,7 +54,7 @@ export interface HandshakeResult {
 
 /**
  * Validates the state echoed back by the provider and returns the stored
- * verifier. Returns null when the state is missing, expired or mismatched —
+ * verifier. Returns null when the state is missing, expired or mismatched,
  * the caller should treat that as a failed connection, not retry it.
  */
 export async function completeHandshake(

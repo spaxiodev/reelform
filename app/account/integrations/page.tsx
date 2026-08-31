@@ -8,10 +8,10 @@ import { DEPLOY_MIN_PLAN, canDeploy, deploySiteLimit } from "@/lib/pricing";
 
 export const metadata = { title: "Integrations", ...PRIVATE_PAGE };
 
-// Errors from the OAuth callback come back as ?error= — it has nowhere else
+// Errors from the OAuth callback come back as ?error=: they have nowhere else
 // to put them.
 const ERRORS: Record<string, string> = {
-  denied: "You cancelled the connection — nothing was changed.",
+  denied: "You cancelled the connection. Nothing was changed.",
   state_mismatch: "That connection link expired. Start it again from this page.",
   exchange_failed: "The provider refused the connection. Try again.",
   not_configured: "Deploy integrations are not configured on this server yet.",
@@ -45,7 +45,7 @@ export default async function IntegrationsPage({
     <div className="space-y-4">
       {connected && (
         <p className="card p-4 text-sm text-primary-deep bg-primary-soft/50">
-          {connected === "vercel" ? "Vercel" : "Supabase"} connected — you can publish from any
+          {connected === "vercel" ? "Vercel" : "Supabase"} connected. You can publish from any
           finished site in the studio.
         </p>
       )}
@@ -56,7 +56,7 @@ export default async function IntegrationsPage({
         <h1 className="mt-1 text-2xl font-medium tracking-tight">Ship sites to your own stack</h1>
         <p className="mt-3 text-sm text-muted leading-relaxed max-w-prose">
           Connect the accounts you already pay for and Reelform will push finished sites straight
-          into them — hosting on Vercel, forms and data on Supabase. Nothing is hosted by us, so
+          into them: hosting on Vercel, forms and data on Supabase. Nothing is hosted by us, so
           your site outlives your subscription.
         </p>
         {canDeploy(plan) ? (

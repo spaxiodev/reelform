@@ -5,7 +5,7 @@ import Link from "next/link";
 import { StatusScreen } from "@/components/ui/StatusScreen";
 
 // Catches render and data errors below the root layout. Note the prop is
-// `retry` in Next 16 (it was `reset` before) — it re-runs the failed segment
+// `retry` in Next 16 (it was `reset` before). It re-runs the failed segment
 // without a full page reload, so a transient Supabase hiccup recovers in place.
 export default function Error({
   error,
@@ -28,7 +28,7 @@ export default function Error({
         title="Something went wrong on our end."
         body={
           <>
-            This is our fault, not yours. Nothing you&apos;ve made was lost — your projects,
+            This is our fault, not yours. Nothing you&apos;ve made was lost: your projects,
             footage and credits are all safe. Try again, and if it keeps happening let us know.
           </>
         }

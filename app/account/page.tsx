@@ -154,7 +154,7 @@ export default async function AccountOverviewPage() {
               {planInfo && (
                 <>
                   {" "}
-                  — ${planInfo.priceUsd}/mo, {planInfo.creditsPerMonth.toLocaleString()} credits monthly
+                  · ${planInfo.priceUsd}/mo, {planInfo.creditsPerMonth.toLocaleString()} credits monthly
                 </>
               )}
               {profile?.plan_status && profile.plan_status !== "active" && (

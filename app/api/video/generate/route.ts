@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "video_generate");
   if (limited) return limited;
 
@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
   if (!body.videoId || !body.prompt?.trim()) {
     return NextResponse.json({ error: "Missing video or prompt" }, { status: 400 });
   }
-  // Unknown ids fall through to the server default rather than erroring — the
+  // Unknown ids fall through to the server default rather than erroring, the
   // picker is a preference, not something a stale client should break on.
   const videoModel: VideoModelId = isVideoModel(body.model) ? body.model : DEFAULT_VIDEO_MODEL;
-  // Snap the request onto what this model can really shoot, and price *that* —
+  // Snap the request onto what this model can really shoot, and price *that*:
   // charging for 1080p on a model with no resolution control would be a lie.
   const shot = resolveShot(videoModel, {
     resolution: ["480p", "720p", "1080p"].includes(body.resolution) ? body.resolution : "720p",
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ taskId, cost });
   } catch (err) {
-    // Task never started — undo the charge, whichever form it took.
+    // Task never started, undo the charge, whichever form it took.
     if (freeShot) await releaseFree(user.id, "video");
     else if (!isAdmin) await grantCredits(user.id, cost, "refund", video.project_id);
     const message = err instanceof Error ? err.message : "Video generation failed";

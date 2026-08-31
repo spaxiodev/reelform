@@ -15,8 +15,12 @@ interface HeaderProfile {
 /**
  * The signed-in member's face in a page header: their picture (or initials),
  * their name, and a ring showing how much credit is left. It replaces the old
- * "Account" text link — same destination, but it answers "who am I signed in
+ * "Account" text link, same destination, but it answers "who am I signed in
  * as" and "can I afford another shot" without a click.
+ *
+ * The name hides itself below `sm` even when not compact: on a phone the ring
+ * and the face still identify the account, and the name is the piece a header
+ * has no width for.
  */
 export async function AccountBadge({ compact = false }: { compact?: boolean }) {
   const supabase = await createSupabaseServer();
@@ -61,7 +65,7 @@ export async function AccountBadge({ compact = false }: { compact?: boolean }) {
           size={30}
         />
       </CreditRing>
-      {!compact && <span className="text-sm font-medium">{name}</span>}
+      {!compact && <span className="hidden sm:inline text-sm font-medium">{name}</span>}
     </Link>
   );
 }

@@ -13,7 +13,7 @@ const PALETTE = [
   "#b3262b",
 ];
 
-/** Deterministic colour for an account — same id, same colour, forever. */
+/** Deterministic colour for an account, same id, same colour, forever. */
 export function avatarColor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
@@ -31,7 +31,7 @@ export function initials(name?: string | null, fallback?: string | null): string
   return (first + second).toUpperCase();
 }
 
-/** The short name shown next to the picture — a first name, not an essay. */
+/** The short name shown next to the picture, a first name, not an essay. */
 export function shortName(
   fullName?: string | null,
   username?: string | null,

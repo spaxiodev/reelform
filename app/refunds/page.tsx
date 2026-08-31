@@ -23,8 +23,8 @@ export default function RefundsPage() {
 
       <LegalSection heading="2. Automatic credit refunds">
         <p>
-          If a video generation or site build fails — the provider returns an error and you receive
-          no output — the credits for that action are automatically returned to your balance. You
+          If a video generation or site build fails (the provider returns an error and you receive
+          no output), the credits for that action are automatically returned to your balance. You
           do not need to contact us. If you believe an automatic refund was missed, email us and we
           will fix it.
         </p>
@@ -51,7 +51,7 @@ export default function RefundsPage() {
           </li>
           <li>
             Renewal payments are refundable within 14 days of the charge if none of the renewed
-            credits have been used — for example, if you forgot to cancel.
+            credits have been used, for example if you forgot to cancel.
           </li>
         </ul>
       </LegalSection>
@@ -59,7 +59,7 @@ export default function RefundsPage() {
       <LegalSection heading="5. What we don't refund">
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
-            Credits spent on successful generations — including output you dislike creatively. AI
+            Credits spent on successful generations, including output you dislike creatively. AI
             output varies; the Service lets you preview and reshoot before committing, and only
             charges for what actually runs.
           </li>

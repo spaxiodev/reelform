@@ -9,7 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 import { DEPLOY_MIN_PLAN, canDeploy } from "@/lib/pricing";
 
 // The "push it live" surface: connect the user's own Vercel and Supabase
-// accounts, then ship the built site to them. Nothing here ever sees a token —
+// accounts, then ship the built site to them. Nothing here ever sees a token:
 // the browser only learns whether a provider is connected.
 
 interface IntegrationStatus {
@@ -79,7 +79,7 @@ export function DeployPanel({
     if (!res.ok) return;
     const data = (await res.json()) as { integrations: IntegrationStatus[] };
     setIntegrations(data.integrations);
-    // Default each target to "on if we can actually reach it" — a checkbox the
+    // Default each target to "on if we can actually reach it": a checkbox the
     // user cannot uncheck (it is disabled) must not send a doomed request.
     const connected = (provider: "vercel" | "supabase") =>
       Boolean(data.integrations.find((i) => i.provider === provider)?.connected);
@@ -164,7 +164,7 @@ export function DeployPanel({
 
       if (!res.ok) {
         setStatus(null);
-        toast(data?.error ?? "The deploy failed — try again.", "error");
+        toast(data?.error ?? "The deploy failed. Try again.", "error");
         return;
       }
 
@@ -181,7 +181,7 @@ export function DeployPanel({
       void loadHistory();
     } catch {
       setStatus(null);
-      toast("The deploy failed — try again.", "error");
+      toast("The deploy failed. Try again.", "error");
     } finally {
       setDeploying(false);
     }
@@ -196,11 +196,11 @@ export function DeployPanel({
         <div className="space-y-4">
           <p className="text-sm text-muted leading-relaxed">
             Pushing a site straight to your own Vercel and Supabase accounts is part of{" "}
-            {DEPLOY_MIN_PLAN.name} and up. Your site stays yours either way — on any plan you can
+            {DEPLOY_MIN_PLAN.name} and up. Your site stays yours either way: on any plan you can
             download the zip and host it wherever you like.
           </p>
           <Link href="/pricing" className="btn-primary w-full text-center block">
-            See {DEPLOY_MIN_PLAN.name} — ${DEPLOY_MIN_PLAN.priceUsd}/mo
+            See {DEPLOY_MIN_PLAN.name} · ${DEPLOY_MIN_PLAN.priceUsd}/mo
           </Link>
         </div>
       ) : (
@@ -371,7 +371,7 @@ export function DeployPanel({
 
           <p className="text-xs text-faint leading-relaxed">
             Everything lands in accounts you own. Disconnecting Reelform never takes a live site
-            down — only your provider can do that.
+            down; only your provider can do that.
           </p>
         </div>
       )}

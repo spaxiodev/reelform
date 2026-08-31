@@ -85,7 +85,7 @@ export function Studio({
   const [industry, setIndustry] = useState(project.industry ?? "");
   const [siteBrief, setSiteBrief] = useState(project.site_brief ?? "");
 
-  // Videos — a production can feature several clips.
+  // Videos: a production can feature several clips.
   const [clips, setClips] = useState<VideoRow[]>(initialVideos);
   const [drafts, setDrafts] = useState<Record<string, ClipDraft>>(() =>
     Object.fromEntries(initialVideos.map((c) => [c.id, draftFor(c)]))
@@ -192,17 +192,17 @@ export function Studio({
           if (data.status === "succeeded") {
             patchClip(id, { status: "succeeded", url: data.videoUrl });
             trackEvent("video_succeeded");
-            toast("Footage is ready — review it in the studio.", "success");
+            toast("Footage is ready. Review it in the studio.", "success");
           } else if (data.status === "failed") {
             patchClip(id, { status: "failed" });
             trackEvent("video_failed");
-            setError(data.error ?? "Video generation failed — credits refunded.");
+            setError(data.error ?? "Video generation failed; credits refunded.");
             refreshCredits();
           } else if (data.status) {
             patchClip(id, { status: data.status });
           }
         } catch {
-          // transient network error — keep polling
+          // transient network error: keep polling
         }
       }
     }, 10000); // Higgsfield asks for <=1 status poll per request per 10s
@@ -214,7 +214,7 @@ export function Studio({
     setDrafts((d) => ({ ...d, [id]: { ...d[id], ...patch } }));
   }
 
-  // Ask for the next video in words — Claude works out the shot and rolls it.
+  // Ask for the next video in words; Claude works out the shot and rolls it.
   async function requestClip() {
     const ask = shotDraft.trim();
     if (!ask || requestingClip) return;
@@ -244,7 +244,7 @@ export function Studio({
       setDrafts((d) => ({ ...d, [video.id]: draftFor(video) }));
       setShotChat((c) => [...c, { role: "assistant", content: data.reply }]);
     } catch {
-      const message = "Network error — please try again.";
+      const message = "Network error. Please try again.";
       setError(message);
       setShotChat((c) => [...c, { role: "assistant", content: message }]);
     } finally {
@@ -253,7 +253,7 @@ export function Studio({
     }
   }
 
-  // Add the next empty slot by hand. One card at a time — the next "+" only
+  // Add the next empty slot by hand. One card at a time: the next "+" only
   // shows once this one exists, so nobody faces six blank squares at once.
   async function addClip() {
     if (addingClip || clips.length >= MAX_VIDEOS_PER_PROJECT) return;
@@ -266,14 +266,14 @@ export function Studio({
       });
       const data = await res.json();
       if (!res.ok || !data.video) {
-        toast(data.message ?? data.error ?? "Could not add another video — try again.", "error");
+        toast(data.message ?? data.error ?? "Could not add another video. Try again.", "error");
         return;
       }
       const clip = data.video as VideoRow;
       setClips((cs) => [...cs, clip]);
       setDrafts((d) => ({ ...d, [clip.id]: draftFor(clip) }));
     } catch {
-      toast("Could not add another video — check your connection.", "error");
+      toast("Could not add another video. Check your connection.", "error");
     } finally {
       setAddingClip(false);
     }
@@ -285,9 +285,9 @@ export function Studio({
     const res = await fetch(`/api/videos?videoId=${id}`, { method: "DELETE" });
     if (!res.ok) {
       setClips(previous);
-      // 409 means it's still rendering — the server explains why in `error`.
+      // 409 means it's still rendering; the server explains why in `error`.
       const data = await res.json().catch(() => null);
-      toast(data?.error ?? "Could not remove that video — try again.", "error");
+      toast(data?.error ?? "Could not remove that video. Try again.", "error");
     }
   }
 
@@ -301,14 +301,14 @@ export function Studio({
     });
     if (!res.ok && previous) {
       patchClip(id, { label: previous.label, mode: previous.mode });
-      toast("Could not save that change — try again.", "error");
+      toast("Could not save that change. Try again.", "error");
     }
   }
 
   async function generateClip(id: string) {
     const d = drafts[id];
     if (!d?.prompt.trim()) {
-      setError("Describe the video first — or start from a shot style.");
+      setError("Describe the video first, or start from a shot style.");
       return;
     }
     setError(null);
@@ -349,7 +349,7 @@ export function Studio({
 
   async function suggestShot(id: string) {
     if (!industry.trim() && !siteBrief.trim()) {
-      setError("Fill in the brief first — then I'll suggest a shot.");
+      setError("Fill in the brief first, then I'll suggest a shot.");
       return;
     }
     setError(null);
@@ -363,13 +363,13 @@ export function Studio({
       });
       const data = await res.json();
       if (!res.ok || !data.prompt) {
-        setError(data.message ?? data.error ?? "Could not suggest a shot — try again.");
+        setError(data.message ?? data.error ?? "Could not suggest a shot. Try again.");
         return;
       }
       setDraftFor(id, { prompt: data.prompt });
-      toast("Shot suggested — tweak it or generate as-is.", "success");
+      toast("Shot suggested. Tweak it or generate as-is.", "success");
     } catch {
-      setError("Could not suggest a shot — check your connection and try again.");
+      setError("Could not suggest a shot. Check your connection and try again.");
     } finally {
       setSuggestingClip(null);
     }
@@ -431,7 +431,7 @@ export function Studio({
       const html = stripFences(full);
       setSiteHtml(html);
       trackEvent("site_build_completed", { model, chars: html.length });
-      toast("Your site is live in the preview — scroll through it.", "success");
+      toast("Your site is live in the preview. Scroll through it.", "success");
       setPreviewVersion((v) => v + 1);
       setChat((c) => [
         ...c,
@@ -550,14 +550,14 @@ export function Studio({
         .update({ published: next, published_at: next ? new Date().toISOString() : null })
         .eq("id", project.id);
       if (error) {
-        toast("Could not update the showcase status — try again.", "error");
+        toast("Could not update the showcase status. Try again.", "error");
         return;
       }
       setPublished(next);
       if (next) trackEvent("site_published");
       toast(
         next
-          ? "Published — your site is now featured in the showcase."
+          ? "Published. Your site is now featured in the showcase."
           : "Removed from the showcase.",
         "success"
       );
@@ -578,7 +578,7 @@ export function Studio({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        toast(data?.message ?? data?.error ?? "Could not package the download — try again.", "error");
+        toast(data?.message ?? data?.error ?? "Could not package the download. Try again.", "error");
         return;
       }
       const blob = await res.blob();
@@ -589,9 +589,9 @@ export function Studio({
       a.click();
       URL.revokeObjectURL(url);
       trackEvent("site_exported", { clips: clips.length });
-      toast("Downloaded — unzip and host the folder anywhere.", "success");
+      toast("Downloaded. Unzip and host the folder anywhere.", "success");
     } catch {
-      toast("Could not package the download — try again.", "error");
+      toast("Could not package the download. Try again.", "error");
     } finally {
       setDownloading(false);
     }
@@ -608,14 +608,14 @@ export function Studio({
     if (!t) return;
     setIndustry(t.industry);
     setSiteBrief(t.brief);
-    toast("Template loaded — replace the [bracketed] parts with your details.", "info");
+    toast("Template loaded. Replace the [bracketed] parts with your details.", "info");
   }
 
   const claudeCost = MODELS[model].credits;
   // Chat-requested clips are shot at the studio default (see /api/video/request).
   const extraClipCost = videoCost(DEFAULT_VIDEO_MODEL, "720p", 5);
 
-  // Admins never spend credits — show "Free" wherever a cost would appear.
+  // Admins never spend credits: show "Free" wherever a cost would appear.
   const costLabel = (n: number) => (isAdmin ? "Free" : `${n} credits`);
 
   const steps = [
@@ -631,23 +631,23 @@ export function Studio({
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
       {/* ── Top bar: identity + credits + (once built) export actions ── */}
-      <header className="flex items-center justify-between px-6 py-3.5 border-b border-line shrink-0 bg-bg">
-        <div className="flex items-center gap-4 min-w-0">
+      <header className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-line shrink-0 bg-bg">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <Link href="/dashboard" className="mono-label hover:!text-ink transition-colors shrink-0">
             ← DASHBOARD
           </Link>
           <span className="text-line-strong">/</span>
           <span className="font-medium truncate">{name}</span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 overflow-x-auto sm:overflow-visible no-scrollbar shrink-0">
           {isAdmin ? (
             <span className="mono-label !text-primary mr-2">ADMIN · UNLIMITED</span>
           ) : (
             <>
               <span className="mono-label !text-primary mr-2">{credits.toLocaleString()} CREDITS</span>
-              <Link href="/pricing" className="btn-ghost !py-2 !px-3.5 !text-xs">
+              <Link href="/pricing" className="btn-ghost !py-2 !px-3.5 !text-xs shrink-0">
                 Top up
               </Link>
             </>
@@ -659,24 +659,24 @@ export function Studio({
                 disabled={publishing}
                 title={
                   published
-                    ? "Your site is live in the public showcase — click to remove it"
+                    ? "Your site is live in the public showcase. Click to remove it"
                     : "Feature your site in the public Reelform showcase"
                 }
-                className={`!py-2 !px-3.5 !text-xs ${published ? "btn-primary" : "btn-ghost"}`}
+                className={`shrink-0 !py-2 !px-3.5 !text-xs ${published ? "btn-primary" : "btn-ghost"}`}
               >
                 {publishing ? "…" : published ? "★ Featured" : "☆ Get featured"}
               </button>
               <button
                 onClick={downloadHtml}
                 disabled={downloading}
-                className="btn-ghost !py-2 !px-3.5 !text-xs"
+                className="btn-ghost !py-2 !px-3.5 !text-xs shrink-0"
               >
                 {downloading ? "Packaging…" : "⬇ Download"}
               </button>
               <button
                 onClick={() => setDeployOpen(true)}
-                title={liveUrl ? `Live at ${liveUrl} — click to ship the latest version` : "Push this site live on your own Vercel and Supabase"}
-                className="btn-primary !py-2 !px-4 !text-xs"
+                title={liveUrl ? `Live at ${liveUrl}. Click to ship the latest version` : "Push this site live on your own Vercel and Supabase"}
+                className="btn-primary !py-2 !px-4 !text-xs shrink-0"
               >
                 {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
               </button>
@@ -807,7 +807,7 @@ export function Studio({
               </div>
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Direct your shots</h1>
               <p className="mt-2 text-muted">
-                The first clip opens your site. Add more and Claude will place them down the page —
+                The first clip opens your site. Add more and Claude will place them down the page;
                 each one plays the way you set it: scrubbing with the scroll, or looping on its own.
               </p>
 
@@ -853,7 +853,7 @@ export function Studio({
                     <p className="mt-1 text-sm text-muted leading-relaxed">
                       {clips.length >= MAX_VIDEOS_PER_PROJECT
                         ? `You've reached the ${MAX_VIDEOS_PER_PROJECT}-video limit for one production.`
-                        : "Rather than filling in a slot yourself: say what you want and I'll work out the shot and roll it — it'll appear above as it renders."}
+                        : "Rather than filling in a slot yourself: say what you want and I'll work out the shot and roll it. It'll appear above as it renders."}
                     </p>
                   </div>
                   {clips.length < MAX_VIDEOS_PER_PROJECT && (
@@ -867,11 +867,11 @@ export function Studio({
                         transcript=""
                         placeholder="e.g. now a slow close-up of the beans being roasted"
                         busyLabel="Working out the shot…"
-                        emptyState="Tell me what you want to see next — “a slow pan across the workshop”, “steam rising off a fresh cup, close up”. I'll write the shot, pick how it plays, and start rendering it."
+                        emptyState="Tell me what you want to see next: “a slow pan across the workshop”, “steam rising off a fresh cup, close up”. I'll write the shot, pick how it plays, and start rendering it."
                         hint={
                           isAdmin
                             ? "Extra videos are free for admins. Enter to send, Shift+Enter for a new line."
-                            : `Each extra video costs ${extraClipCost} credits — 720p, 5 seconds. Enter to send.`
+                            : `Each extra video costs ${extraClipCost} credits (720p, 5 seconds). Enter to send.`
                         }
                       />
                     </div>
@@ -901,15 +901,15 @@ export function Studio({
         {step === 3 && (
           <div className="flex-1 min-h-0 flex flex-col">
             {building ? (
-              // Streaming — full screen
+              // Streaming: full screen
               <div className="flex-1 flex flex-col">
                 <div className="stream-bar" />
                 <div className="flex-1 flex flex-col items-center justify-center p-10 gap-6">
                   {/* The character counter ticks constantly, so the live region
-                      wraps only the headline and the raw stream stays silent —
+                      wraps only the headline and the raw stream stays silent,
                       otherwise a screen reader would never stop talking. */}
                   <p className="mono-label flex items-center gap-2" role="status" aria-live="polite">
-                    <span className="rec-dot" aria-hidden /> CLAUDE IS WRITING YOUR SITE —{" "}
+                    <span className="rec-dot" aria-hidden /> CLAUDE IS WRITING YOUR SITE ·{" "}
                     <span aria-hidden>{streamedChars.toLocaleString()} CHARACTERS</span>
                   </p>
                   <pre
@@ -921,34 +921,34 @@ export function Studio({
                 </div>
               </div>
             ) : siteHtml ? (
-              // Site ready — the real website above, the chat about it below
+              // Site ready: the real website above, the chat about it below
               <>
-                <div className="flex items-center justify-between px-5 py-2.5 border-b border-line bg-bg shrink-0">
+                <div className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-5 py-2.5 border-b border-line bg-bg shrink-0">
                   <p className="mono-label flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-primary" aria-hidden /> LIVE PREVIEW ·
                     SCROLL IT
                   </p>
-                  <div className="flex items-center gap-2">
-                    <button onClick={openInNewTab} className="btn-ghost !py-1.5 !px-3 !text-xs">
+                  <div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto sm:overflow-visible no-scrollbar">
+                    <button onClick={openInNewTab} className="btn-ghost !py-1.5 !px-3 !text-xs shrink-0">
                       Open in new tab ↗
                     </button>
                     <button
                       onClick={() => runClaude()}
                       disabled={editing || building || !siteBrief.trim()}
-                      className="btn-ghost !py-1.5 !px-3 !text-xs"
+                      className="btn-ghost !py-1.5 !px-3 !text-xs shrink-0"
                     >
                       Start over
                     </button>
                     <button
                       onClick={downloadHtml}
                       disabled={downloading}
-                      className="btn-ghost !py-1.5 !px-3 !text-xs"
+                      className="btn-ghost !py-1.5 !px-3 !text-xs shrink-0"
                     >
                       {downloading ? "Packaging…" : "⬇ Download"}
                     </button>
                     <button
                       onClick={() => setDeployOpen(true)}
-                      className="btn-primary !py-1.5 !px-3.5 !text-xs"
+                      className="btn-primary !py-1.5 !px-3.5 !text-xs shrink-0"
                     >
                       {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
                     </button>
@@ -956,7 +956,7 @@ export function Studio({
                 </div>
 
                 <div ref={splitRef} className="flex-1 min-h-0 flex flex-col">
-                  {/* The website itself — scrollable, exactly as visitors see it. */}
+                  {/* The website itself: scrollable, exactly as visitors see it. */}
                   <iframe
                     key={previewVersion}
                     srcDoc={siteHtml}
@@ -996,22 +996,22 @@ export function Studio({
                         isAdmin
                           ? "Edits run free for admins. Enter to send, Shift+Enter for a new line."
                           : lastEditCost !== null
-                          ? `Last change cost ${lastEditCost} credits. Edits are billed by usage — small tweaks cost little, big redesigns cost more.`
-                          : "Edits are billed by usage — small tweaks cost little, big redesigns cost more. Enter to send, Shift+Enter for a new line."
+                          ? `Last change cost ${lastEditCost} credits. Edits are billed by usage: small tweaks cost little, big redesigns cost more.`
+                          : "Edits are billed by usage: small tweaks cost little, big redesigns cost more. Enter to send, Shift+Enter for a new line."
                       }
                     />
                   </div>
                 </div>
               </>
             ) : readyClips.length === 0 ? (
-              // Guard — need footage first
+              // Guard: need footage first
               <div className="flex-1 flex flex-col items-center justify-center p-10 text-center gap-5">
                 <p className="text-6xl" aria-hidden>
                   🎬
                 </p>
                 <p className="text-2xl font-bold">Create a video first</p>
                 <p className="text-muted max-w-sm">
-                  Claude builds the whole site around your approved footage — so let&apos;s shoot that
+                  Claude builds the whole site around your approved footage, so let&apos;s shoot that
                   first.
                 </p>
                 <button onClick={() => goStep(2)} className="btn-primary !py-3 !px-6">
@@ -1048,7 +1048,7 @@ export function Studio({
                     {clips.length > readyClips.length && (
                       <p className="mt-2 text-xs text-faint">
                         {clips.length - readyClips.length} clip
-                        {clips.length - readyClips.length === 1 ? "" : "s"} still unshot — they
+                        {clips.length - readyClips.length === 1 ? "" : "s"} still unshot, so they
                         won&apos;t be included.
                       </p>
                     )}
@@ -1099,7 +1099,7 @@ export function Studio({
                     Build my website · {costLabel(claudeCost)}
                   </button>
                   <p className="mt-2 text-xs text-faint text-center">
-                    Streams live — usually 1–3 minutes.
+                    Streams live, usually 1–3 minutes.
                   </p>
                 </div>
               </div>

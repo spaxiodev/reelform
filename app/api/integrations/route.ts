@@ -31,7 +31,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unknown provider" }, { status: 400 });
   }
 
-  // Only our copy of the token goes away — sites already deployed keep
+  // Only our copy of the token goes away, sites already deployed keep
   // running, since they live in the user's own account.
   await deleteIntegration(user.id, provider);
   return NextResponse.json({ ok: true });

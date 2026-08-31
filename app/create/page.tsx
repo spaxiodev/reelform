@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { AppHeader } from "@/components/AppHeader";
 import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
@@ -27,20 +27,13 @@ export default async function CreatePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-raise">
-      <header className="bg-bg flex items-center justify-between px-6 md:px-10 py-5 border-b border-line">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="rec-dot" aria-hidden />
-          <span className="font-semibold tracking-tight text-lg">
-            Reel<span className="text-primary">form</span>
-          </span>
-        </Link>
-        <nav className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-sm text-muted hover:text-ink transition-colors">
-            My projects
-          </Link>
-          <AccountBadge />
-        </nav>
-      </header>
+      <AppHeader
+        links={[
+          { href: "/dashboard", label: "My projects" },
+        ]}
+      >
+        <AccountBadge />
+      </AppHeader>
 
       <main id="main" className="flex-1 px-6 md:px-10 py-12 md:py-16 max-w-4xl mx-auto w-full">
         <CreateFlow isFirstBuild={!profile?.free_site_used} isAdmin={isAdminUser(user.id)} />

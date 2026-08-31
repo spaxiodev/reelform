@@ -19,7 +19,7 @@ export interface ShotSettings {
 }
 
 // The cheap models are listed first, everything dearer under "Other models".
-// The line is drawn at the default model's rate — a threshold rather than a
+// The line is drawn at the default model's rate: a threshold rather than a
 // hand-kept list, so adding a model to the catalog can't leave it in the wrong
 // group. Today that puts the two ~3× models on the far side of it.
 const VALUE_CEILING = VIDEO_MODEL_USD_PER_SECOND["wan-2.5"];
@@ -32,7 +32,7 @@ const RATIOS: { value: Ratio; label: string }[] = [
 ];
 
 // Model access is per Higgsfield account and barely ever changes, so one fetch
-// per page load is plenty — and every control on the page shares it.
+// per page load is plenty, and every control on the page shares it.
 let accessPromise: Promise<Record<string, boolean>> | null = null;
 
 function loadAccess(): Promise<Record<string, boolean>> {
@@ -44,8 +44,8 @@ function loadAccess(): Promise<Record<string, boolean>> {
 }
 
 /**
- * The three controls that decide what a shot costs — model, quality and length
- * — plus the price. Shared by the create flow and the studio so the two can't
+ * The three controls that decide what a shot costs (model, quality and length),
+ * plus the price. Shared by the create flow and the studio so the two can't
  * drift, and so the quoted cost always comes from the same place the server
  * charges from.
  */
@@ -60,11 +60,11 @@ export function ShotControls({
   value: ShotSettings;
   onChange: (patch: Partial<ShotSettings>) => void;
   showRatio?: boolean;
-  /** How to phrase the price — the studio says "free" while a free shot lasts. */
+  /** How to phrase the price, the studio says "free" while a free shot lasts. */
   costLabel?: (credits: number) => string;
   /**
    * Admins can select a model Higgsfield hasn't enabled on our key. It will
-   * still fail at the provider — that gate isn't ours to lift — but an admin
+   * still fail at the provider (that gate isn't ours to lift), but an admin
    * checking whether access has been granted shouldn't have to edit code to
    * try it.
    */
@@ -141,7 +141,7 @@ export function ShotControls({
           <p className="mt-1.5 text-xs leading-snug text-muted">{model.blurb}</p>
           {unreachable && (
             <p className="mt-1.5 text-xs leading-snug text-danger">
-              Higgsfield hasn&apos;t enabled {model.label} on this API key — the shot will fail
+              Higgsfield hasn&apos;t enabled {model.label} on this API key, so the shot will fail
               until they do. Model access is granted per account by Higgsfield, not here.
             </p>
           )}

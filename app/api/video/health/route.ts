@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkHealth, type ProviderHealth } from "@/lib/higgsfield";
 
-// GET /api/video/health — is the video provider answering right now?
+// GET /api/video/health: is the video provider answering right now?
 //
 // The studio and the create flow show this beside the shot controls so nobody
 // spends credits into an outage. Uncached at the edge but memoised per server

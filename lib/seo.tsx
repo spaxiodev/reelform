@@ -21,8 +21,8 @@ export function pageMeta({
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { title: `${title} — Reelform`, description, url: path },
-    twitter: { title: `${title} — Reelform`, description },
+    openGraph: { title: `${title} | Reelform`, description, url: path },
+    twitter: { title: `${title} | Reelform`, description },
   };
 }
 
@@ -35,7 +35,7 @@ export const PRIVATE_PAGE: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
-// Schema.org structured data. Google reads these to build rich results — the
+// Schema.org structured data. Google reads these to build rich results: the
 // FAQ accordion, the price range under the site name, the breadcrumb trail.
 // Each helper returns a plain object; <JsonLd> serialises it into the page.
 
@@ -126,7 +126,7 @@ export function pricingJsonLd(): Json {
   };
 }
 
-/** FAQPage graph — pass the same Q&A pairs the page renders, or they disagree. */
+/** FAQPage graph. Pass the same Q&A pairs the page renders, or they disagree. */
 export function faqJsonLd(faqs: { q: string; a: string }[]): Json {
   return {
     "@context": "https://schema.org",

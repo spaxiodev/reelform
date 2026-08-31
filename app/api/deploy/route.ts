@@ -90,7 +90,7 @@ export async function DELETE(request: NextRequest) {
   const projectId = new URL(request.url).searchParams.get("projectId");
   if (!projectId) return NextResponse.json({ error: "Missing project" }, { status: 400 });
 
-  // The deployment itself lives in the user's own Vercel account — only they
+  // The deployment itself lives in the user's own Vercel account, only they
   // can delete it there, so this just stops us counting it as live.
   await markProjectOffline(user.id, projectId);
   return NextResponse.json({ ok: true });

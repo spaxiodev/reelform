@@ -4,7 +4,7 @@ import type { SiteFile } from "./site-bundle";
 // Thin client for the Vercel REST API, scoped to what a deploy needs.
 //
 // Every call runs against the *user's* Vercel account with a token from their
-// OAuth grant — Reelform never owns the project or the hosting bill.
+// OAuth grant, Reelform never owns the project or the hosting bill.
 // Docs: https://vercel.com/docs/rest-api
 
 const API = "https://api.vercel.com";
@@ -91,7 +91,7 @@ async function call<T>(
   return (await res.json()) as T;
 }
 
-/** Display name for the connected account — a team slug or the user's name. */
+/** Display name for the connected account, a team slug or the user's name. */
 export async function vercelAccountName(auth: VercelAuth): Promise<string | null> {
   try {
     if (auth.teamId) {
@@ -101,7 +101,7 @@ export async function vercelAccountName(auth: VercelAuth): Promise<string | null
     const me = await call<{ user?: { name?: string; username?: string } }>(auth, "/v2/user");
     return me.user?.name ?? me.user?.username ?? null;
   } catch {
-    return null; // cosmetic only — never block a connection on it
+    return null; // cosmetic only, never block a connection on it
   }
 }
 
@@ -145,8 +145,8 @@ export interface VercelDeployment {
 
 /**
  * Ships `files` as a production deployment of `projectName`, creating the
- * Vercel project on first push. The bundle is plain static output — no build
- * step — so `projectSettings` explicitly clears every framework default.
+ * Vercel project on first push. The bundle is plain static output, no build
+ * step, so `projectSettings` explicitly clears every framework default.
  */
 export async function createVercelDeployment(
   auth: VercelAuth,
@@ -207,7 +207,7 @@ export async function upsertVercelEnv(
       body: JSON.stringify(body),
     });
   } catch {
-    // A convenience, not part of what the user asked for — never fail a
+    // A convenience, not part of what the user asked for, never fail a
     // successful deploy because the project's env could not be written.
   }
 }

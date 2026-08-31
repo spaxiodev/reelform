@@ -1,7 +1,7 @@
 import { creditRing } from "@/lib/pricing";
 
 /**
- * A thin arc around whatever it wraps — normally the avatar — showing how much
+ * A thin arc around whatever it wraps (normally the avatar), showing how much
  * of the account's credit allowance is left. It's an at-a-glance gauge, not a
  * readout: the exact number lives on the account page, and the title attribute
  * carries it for anyone who wants it here.

@@ -15,8 +15,8 @@ export default function FaqPage() {
       <LegalSection heading="What is Reelform?">
         <p>
           Reelform builds video-first websites. You describe your business, direct a cinematic hero
-          video with Seedance, and Claude builds a complete single-page site around the footage —
-          all in a few minutes, iterated through chat.
+          video with Seedance, and Claude builds a complete single-page site around the footage.
+          It all takes a few minutes, and you iterate through chat.
         </p>
       </LegalSection>
 
@@ -24,7 +24,7 @@ export default function FaqPage() {
         <p>
           Everything runs on credits: video renders and site builds each cost a fixed amount shown
           before you confirm. One credit is roughly $0.01 of value. Every new account starts with
-          one complete website free — a hero video and a full site build.
+          one complete website free: a hero video and a full site build.
         </p>
         <p>
           Subscription credits refill monthly; top-up credits never expire. You can see every
@@ -45,7 +45,7 @@ export default function FaqPage() {
 
       <LegalSection heading="What's the difference between plans and top-ups?">
         <p>
-          Plans are monthly subscriptions with the best credit rate — ideal if you build regularly.
+          Plans are monthly subscriptions with the best credit rate, and they are ideal if you build regularly.
           Top-ups are one-time purchases at a slightly higher rate, and those credits never expire.
           You can mix both freely.
         </p>
@@ -53,7 +53,7 @@ export default function FaqPage() {
 
       <LegalSection heading="Where do I find my invoices?">
         <p>
-          Every payment — subscriptions and top-ups — has a downloadable PDF invoice under{" "}
+          Every payment (subscriptions and top-ups) has a downloadable PDF invoice under{" "}
           <a href="/account/billing" className="text-primary underline">
             Account → Billing &amp; invoices
           </a>
@@ -78,8 +78,7 @@ export default function FaqPage() {
           our{" "}
           <a href="/refunds" className="text-primary underline">
             Refund Policy
-          </a>{" "}
-          — unused top-ups and accidental charges are typically refundable within 14 days.
+          </a>. Unused top-ups and accidental charges are typically refundable within 14 days.
         </p>
       </LegalSection>
 

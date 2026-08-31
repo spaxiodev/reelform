@@ -1,7 +1,7 @@
 // Who is allowed to spend what.
 //
 // The product rule is deliberately small: **every account gets one complete
-// website free** — one hero video and one site build. Everything past that
+// website free**, one hero video and one site build. Everything past that
 // (reshooting, editing, a second project) needs an active subscription. This
 // module is the only place that rule is written down; routes ask it for a
 // verdict rather than each re-deriving the policy from plan columns.
@@ -18,7 +18,7 @@ export type Grant =
   | { ok: false; reason: "subscription_required"; message: string };
 
 /**
- * A subscription is "live" while Stripe says active. `past_due` still counts —
+ * A subscription is "live" while Stripe says active. `past_due` still counts,
  * the customer is mid dunning, and locking them out of their own work is a
  * worse outcome than one more build; `canceled` resets plan to free anyway.
  */
@@ -70,7 +70,7 @@ export async function releaseFree(userId: string, kind: FreeKind): Promise<void>
 const UPGRADE = {
   video: "You've used your free hero video. Subscribe to shoot more.",
   site: "You've used your free website. Subscribe to build and edit more.",
-  edit: "Editing a finished site is a subscriber feature — your free build is a one-shot.",
+  edit: "Editing a finished site is a subscriber feature; your free build is a one-shot.",
   project: "Your free website is this one. Subscribe to start another project.",
 } as const;
 
@@ -93,8 +93,8 @@ export async function authorizeVideo(supabase: SupabaseClient, userId: string): 
 }
 
 /**
- * Building a site. An *edit* is never free — the free tier is one build, not an
- * open-ended session — so it goes straight to the subscription check.
+ * Building a site. An *edit* is never free, the free tier is one build, not an
+ * open-ended session, so it goes straight to the subscription check.
  */
 export async function authorizeSiteBuild(
   supabase: SupabaseClient,
@@ -108,7 +108,7 @@ export async function authorizeSiteBuild(
   return (await claimFree(userId, "site")) ? { ok: true, billing: "free" } : denied(UPGRADE.site);
 }
 
-/** Free accounts get one project — the one their free website lives in. */
+/** Free accounts get one project, the one their free website lives in. */
 export async function authorizeProject(supabase: SupabaseClient, userId: string): Promise<Grant> {
   const profile = await loadProfile(supabase, userId);
   if (isSubscribed(profile)) return { ok: true, billing: "credits" };

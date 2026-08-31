@@ -77,7 +77,7 @@ export default function GlobalError({
             </h1>
             <p style={{ marginTop: 12, lineHeight: 1.6, color: "#4b3a33" }}>
               Something broke badly enough to take the whole page down. Your projects, footage and
-              credits are safe — reloading usually fixes it.
+              credits are safe, and reloading usually fixes it.
             </p>
             <div style={{ marginTop: 28, display: "flex", flexWrap: "wrap", gap: 12 }}>
               <button

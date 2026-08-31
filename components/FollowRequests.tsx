@@ -58,7 +58,7 @@ export function FollowRequests({ userId }: { userId: string }) {
           .eq("follower_id", followerId)
           .eq("followee_id", userId);
     if (error) {
-      toast("Something went wrong — please try again.", "error");
+      toast("Something went wrong, please try again.", "error");
     } else {
       setRequests((prev) => prev?.filter((r) => r.followerId !== followerId) ?? null);
     }
@@ -71,7 +71,7 @@ export function FollowRequests({ userId }: { userId: string }) {
     <section className="card p-6 md:p-8">
       <h2 className="text-xl font-medium tracking-tight">Follower requests</h2>
       <p className="mt-2 text-sm text-muted">
-        Your account is private — approve who gets to see what you publish.
+        Your account is private. Approve who gets to see what you publish.
       </p>
       <ul className="mt-4 divide-y divide-line">
         {requests.map((r) => (

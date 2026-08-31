@@ -120,7 +120,7 @@ export default async function ProfilePage({
             </p>
             <h2 className="text-2xl font-medium tracking-tight">This account is private</h2>
             <p className="mt-3 text-muted max-w-md mx-auto">
-              Request to follow @{profile.username} — once they approve, you&apos;ll see the sites
+              Request to follow @{profile.username}. Once they approve, you&apos;ll see the sites
               and videos they&apos;ve published.
             </p>
           </div>

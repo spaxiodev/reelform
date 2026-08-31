@@ -12,10 +12,10 @@ import {
 // editing the ones already there. Clips that come with a shot already written
 // are made in the studio chat instead (/api/video/request).
 
-// Ordinal names for the slots after the hero — "Second video", "Third video"…
+// Ordinal names for the slots after the hero: "Second video", "Third video"…
 const SLOT_NAMES = ["Hero video", "Second video", "Third video", "Fourth video", "Fifth video", "Sixth video"];
 
-// POST — add one empty clip slot at the end. Nothing renders and nothing is
+// POST: add one empty clip slot at the end. Nothing renders and nothing is
 // charged until the user fills it in and hits generate.
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ video: data });
 }
 
-// PATCH — rename a clip or change how it plays.
+// PATCH: rename a clip or change how it plays.
 export async function PATCH(request: NextRequest) {
   const supabase = await createSupabaseServer();
   const {
@@ -98,7 +98,7 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ video: data });
 }
 
-// DELETE ?videoId=… — drop a clip and close the gap in the ordering.
+// DELETE ?videoId=…: drop a clip and close the gap in the ordering.
 export async function DELETE(request: NextRequest) {
   const supabase = await createSupabaseServer();
   const {
@@ -117,13 +117,13 @@ export async function DELETE(request: NextRequest) {
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   // A render in flight has already been charged, and deleting the row orphans
-  // the poll that would settle it — so the refund on failure would never run
+  // the poll that would settle it, so the refund on failure would never run
   // and the credits would just vanish. Make the user wait for it to land.
   if (video.status === "queued" || video.status === "running") {
     return NextResponse.json(
       {
         error:
-          "This video is still rendering. Wait for it to finish, then remove it — " +
+          "This video is still rendering. Wait for it to finish, then remove it, " +
           "deleting it now would forfeit the credits it already cost.",
       },
       { status: 409 }

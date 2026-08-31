@@ -8,7 +8,7 @@ import { pageMeta } from "@/lib/seo";
 export const metadata = pageMeta({
   title: "Showcase",
   description:
-    "Real video-first websites directed, shot and shipped by Reelform users — each one built by Claude around a Seedance hero video.",
+    "Real video-first websites directed, shot and shipped by Reelform users, each one built by Claude around an AI hero video.",
   path: "/showcase",
 });
 
@@ -39,11 +39,11 @@ export default async function ShowcasePage() {
       <SiteHeader />
 
       <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-6xl mx-auto w-full">
-        <p className="mono-label">PREMIERE NIGHT — MADE WITH REELFORM</p>
+        <p className="mono-label">PREMIERE NIGHT · MADE WITH REELFORM</p>
         <h1 className="mt-3 text-4xl md:text-6xl font-medium tracking-tight">The showcase</h1>
         <p className="mt-4 max-w-2xl text-lg text-muted leading-relaxed">
-          Real websites directed, shot and shipped by Reelform users — each one built by Claude
-          around a Seedance hero video. Publish yours from the studio to get featured here.
+          Real websites directed, shot and shipped by Reelform users, each one built by Claude
+          around an AI hero video. Publish yours from the studio to get featured here.
         </p>
 
         {sites.length === 0 ? (
@@ -54,10 +54,10 @@ export default async function ShowcasePage() {
             <h2 className="text-2xl font-medium tracking-tight">The red carpet is still rolled up</h2>
             <p className="mt-3 text-muted max-w-md mx-auto">
               No sites have been published yet. Build one and hit “Publish to showcase” in the
-              studio — you could be first.
+              studio. You could be first.
             </p>
             <Link href="/create" className="btn-primary mt-8">
-              Start building — first site free
+              Start building · first site free
             </Link>
           </div>
         ) : (

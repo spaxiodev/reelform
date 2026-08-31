@@ -1,7 +1,7 @@
 // Boot-time environment validation.
 //
 // Without this, a missing key surfaces as a confusing 500 the first time a
-// user hits checkout or generates a video — often long after deploy. Checking
+// user hits checkout or generates a video, often long after deploy. Checking
 // once at server start turns that into a loud failure at the only moment
 // anyone is watching the logs.
 
@@ -47,7 +47,7 @@ export function assertEnv(): void {
   const degraded = FEATURE_GATED.filter((v) => missing(v.name));
 
   for (const { name, feature } of degraded) {
-    console.warn(`[env] ${name} is not set — ${feature} will fail until it is.`);
+    console.warn(`[env] ${name} is not set; ${feature} will fail until it is.`);
   }
 
   if (fatal.length === 0) return;
@@ -69,7 +69,7 @@ export function assertEnv(): void {
 
 /**
  * The canonical public origin, without a trailing slash. Prefers the explicit
- * setting, then Vercel's injected URL, then localhost — so preview deploys get
+ * setting, then Vercel's injected URL, then localhost, so preview deploys get
  * correct absolute URLs without extra configuration.
  */
 export function appUrl(): string {

@@ -24,7 +24,7 @@ export default function GuidePage() {
       <LegalSection heading="1. Write a brief Claude can build from">
         <p>
           The brief is the only thing Claude knows about your business. Vague briefs produce
-          generic sites, so name the specifics — who the visitor is, what you want them to do, and
+          generic sites, so name the specifics: who the visitor is, what you want them to do, and
           the one thing that makes you different.
         </p>
         <p>
@@ -38,7 +38,7 @@ export default function GuidePage() {
           visit us.&rdquo;
         </p>
         <p>
-          You don&apos;t need to get it perfect — anything you miss you can add later by chat, and
+          You don&apos;t need to get it perfect. Anything you miss you can add later by chat, and
           the site rebuilds around it.
         </p>
       </LegalSection>
@@ -51,7 +51,7 @@ export default function GuidePage() {
         </p>
         <p>
           A shot prompt that works usually names four things: the subject, the camera move, the
-          lighting, and the mood. For example — &ldquo;slow dolly push across a marble counter,
+          lighting, and the mood. For example, &ldquo;slow dolly push across a marble counter,
           steam rising from a freshly pulled espresso, low golden window light, calm and
           unhurried.&rdquo;
         </p>
@@ -61,12 +61,12 @@ export default function GuidePage() {
           tested starting point to edit.
         </p>
         <p>
-          Nothing reaches your site without your approval — reshoot as many times as you like. A
+          Nothing reaches your site without your approval. Reshoot as many times as you like. A
           render that fails is refunded automatically.
         </p>
       </LegalSection>
 
-      <LegalSection heading="3. Choose loop or scrub — they suit different things">
+      <LegalSection heading="3. Choose loop or scrub: they suit different things">
         <p>
           <strong className="text-ink">Ambient loop</strong> plays the footage continuously behind
           your hero. It suits mood, brand and atmosphere: hospitality, fashion, music, anything
@@ -87,12 +87,12 @@ export default function GuidePage() {
       <LegalSection heading="4. Iterate by chat, then ship">
         <p>
           Once the first build lands, the chat under the preview edits the live site. Be specific
-          and concrete — &ldquo;make the hero headline bigger and drop the subheading to one
+          and concrete. &ldquo;Make the hero headline bigger and drop the subheading to one
           line&rdquo; lands better than &ldquo;make it pop&rdquo;. Each edit is billed on real
           token usage, so small changes cost very little.
         </p>
         <p>
-          When you&apos;re happy, download the zip — an <code>index.html</code> plus every video it
+          When you&apos;re happy, download the zip: an <code>index.html</code> plus every video it
           uses, with the paths already rewritten. Host it on any static host; there&apos;s no
           runtime dependency on us. You can also publish it to the{" "}
           <Link href="/showcase" className="text-primary underline">
@@ -105,7 +105,7 @@ export default function GuidePage() {
       <LegalSection heading="What things cost">
         <p>
           Every action shows its price before you confirm it. New accounts start with{" "}
-          one free website — a hero video and a full site build, no card needed.
+          one free website: a hero video and a full site build, no card needed.
         </p>
         <ul className="mt-4 space-y-2">
           <li className="flex justify-between border-b border-line pb-2">
@@ -124,7 +124,7 @@ export default function GuidePage() {
             <li key={id} className="flex justify-between border-b border-line pb-2 last:border-0">
               <span>
                 Site build · {m.label}{" "}
-                <span className="text-faint">— {m.blurb}</span>
+                <span className="text-faint">· {m.blurb}</span>
               </span>
               <span className="font-mono text-primary">{m.credits} cr</span>
             </li>
@@ -148,8 +148,7 @@ export default function GuidePage() {
           covers billing, refunds and account questions. For anything else, email{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline font-medium">
             {CONTACT_EMAIL}
-          </a>{" "}
-          — a real person reads it.
+          </a>. A real person reads it.
         </p>
       </LegalSection>
     </LegalShell>

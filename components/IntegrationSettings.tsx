@@ -19,7 +19,7 @@ const META = {
     name: "Vercel",
     role: "Hosting",
     blurb:
-      "Deploys your finished site — page, videos and all — as a production deployment in your own Vercel account. You keep the project, the domain and the bill.",
+      "Deploys your finished site (page, videos and all) as a production deployment in your own Vercel account. You keep the project, the domain and the bill.",
   },
   supabase: {
     name: "Supabase",
@@ -41,7 +41,7 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
       toast(`${META[provider].name} disconnected. Live sites keep running.`, "success");
       router.refresh();
     } catch {
-      toast("Could not disconnect — try again.", "error");
+      toast("Could not disconnect. Try again.", "error");
     } finally {
       setBusy(null);
     }

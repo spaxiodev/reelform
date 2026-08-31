@@ -7,7 +7,7 @@ import { exchangeVercelCode, vercelAccountName } from "@/lib/vercel";
 
 // Step two: the provider hands back a code, we trade it for tokens and store
 // them sealed. Failures come back as a `?error=` on the page the user started
-// from — an OAuth callback has nowhere useful to render an error itself.
+// from, an OAuth callback has nowhere useful to render an error itself.
 export const runtime = "nodejs";
 
 function isProvider(value: string): value is Provider {
@@ -48,7 +48,7 @@ export async function GET(
       await saveIntegration(user.id, "vercel", {
         accessToken: token.access_token,
         // Vercel's OAuth access tokens do not expire, so there is nothing to
-        // refresh — the user revokes access from their Vercel dashboard.
+        // refresh, the user revokes access from their Vercel dashboard.
         accountId: token.team_id ?? null,
         accountName: await vercelAccountName(auth),
       });

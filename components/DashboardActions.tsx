@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-// Starting a production is the /create flow now — the format choice, the brief
+// Starting a production is the /create flow now: the format choice, the brief
 // and the shot controls all live there, so the dashboard just links into it.
 export function NewProjectButton({ variant = "primary" }: { variant?: "primary" | "ghost" }) {
   return (

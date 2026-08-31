@@ -1,4 +1,4 @@
-// Starter templates for the studio. Both kinds insert editable text — the
+// Starter templates for the studio. Both kinds insert editable text; the
 // user is always expected to replace the [bracketed] parts with their own
 // details before generating.
 
@@ -29,14 +29,14 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     label: "Creative Portfolio",
     industry: "Creative services",
     brief:
-      "A bold portfolio for [your name], a [discipline — e.g. photographer / designer / director] based in [city]. Sections: full-bleed hero with the video, a selected-work grid (use elegant placeholder tiles I can replace), a short bio with personality, services offered, and a contact section. Tone: confident, minimal, let the visuals lead.",
+      "A bold portfolio for [your name], a [discipline, e.g. photographer / designer / director] based in [city]. Sections: full-bleed hero with the video, a selected-work grid (use elegant placeholder tiles I can replace), a short bio with personality, services offered, and a contact section. Tone: confident, minimal, let the visuals lead.",
   },
   {
     id: "fitness",
     label: "Fitness Studio",
     industry: "Health & fitness",
     brief:
-      "An energetic site for [studio name], a [type — e.g. strength / yoga / boxing] studio in [city]. Sections: high-impact hero with the video, class schedule overview, trainer intros (2–3), membership pricing with a first-class-free offer, and testimonials. Tone: motivating and human, never intimidating.",
+      "An energetic site for [studio name], a [type, e.g. strength / yoga / boxing] studio in [city]. Sections: high-impact hero with the video, class schedule overview, trainer intros (2–3), membership pricing with a first-class-free offer, and testimonials. Tone: motivating and human, never intimidating.",
   },
   {
     id: "realestate",
@@ -67,41 +67,41 @@ export const VIDEO_TEMPLATES: VideoTemplate[] = [
     label: "Slow interior dolly",
     hint: "Warm, intimate, premium",
     prompt:
-      "Slow cinematic dolly shot moving through [your space — e.g. a sunlit café with espresso steam rising], warm natural window light, shallow depth of field, subtle floating dust particles, rich warm color grade, smooth gimbal movement",
+      "Slow cinematic dolly shot moving through [your space, e.g. a sunlit café with espresso steam rising], warm natural window light, shallow depth of field, subtle floating dust particles, rich warm color grade, smooth gimbal movement",
   },
   {
     id: "aerial",
     label: "Aerial establishing",
     hint: "Grand, sweeping scale",
     prompt:
-      "Sweeping aerial drone shot rising over [your location — e.g. a coastal town at golden hour], soft golden light, gentle forward glide revealing the landscape, cinematic wide angle, film-like color grade",
+      "Sweeping aerial drone shot rising over [your location, e.g. a coastal town at golden hour], soft golden light, gentle forward glide revealing the landscape, cinematic wide angle, film-like color grade",
   },
   {
     id: "macro",
     label: "Product macro",
     hint: "Detail, craft, texture",
     prompt:
-      "Extreme macro shot of [your product — e.g. coffee beans tumbling in slow motion], dramatic side lighting, glossy surface details, slow rotation on a dark background, shallow focus, luxurious commercial look",
+      "Extreme macro shot of [your product, e.g. coffee beans tumbling in slow motion], dramatic side lighting, glossy surface details, slow rotation on a dark background, shallow focus, luxurious commercial look",
   },
   {
     id: "urban",
     label: "Urban energy",
     hint: "Fast, modern, alive",
     prompt:
-      "Dynamic tracking shot through [your setting — e.g. a busy city street at dusk], neon reflections on wet pavement, motion blur on passing crowds, handheld energy, cool teal-and-amber grade",
+      "Dynamic tracking shot through [your setting, e.g. a busy city street at dusk], neon reflections on wet pavement, motion blur on passing crowds, handheld energy, cool teal-and-amber grade",
   },
   {
     id: "nature",
     label: "Calm nature",
     hint: "Organic, serene, spacious",
     prompt:
-      "Serene slow pan across [your scene — e.g. morning mist over a forest lake], soft diffused light, gentle water ripples, birds in the far distance, muted natural palette, meditative pacing",
+      "Serene slow pan across [your scene, e.g. morning mist over a forest lake], soft diffused light, gentle water ripples, birds in the far distance, muted natural palette, meditative pacing",
   },
   {
     id: "abstract",
     label: "Abstract motion",
     hint: "Brand-forward, artistic",
     prompt:
-      "Abstract slow-motion fluid shapes in [your brand colors — e.g. deep blue and white], ink diffusing through water, silky ribbons of color folding over themselves, studio lighting, ultra smooth motion, elegant and modern",
+      "Abstract slow-motion fluid shapes in [your brand colors, e.g. deep blue and white], ink diffusing through water, silky ribbons of color folding over themselves, studio lighting, ultra smooth motion, elegant and modern",
   },
 ];

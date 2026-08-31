@@ -6,12 +6,12 @@ import { createPortal } from "react-dom";
 export interface SelectOption<T extends string = string> {
   value: T;
   label: string;
-  /** Second line under the label — what this choice means. */
+  /** Second line under the label: what this choice means. */
   description?: string | null;
   /** Right-hand chip: a price, a size, a status. */
   meta?: string | null;
   disabled?: boolean;
-  /** Replaces `meta` when disabled — why this one can't be picked. */
+  /** Replaces `meta` when disabled: why this one can't be picked. */
   disabledReason?: string | null;
 }
 
@@ -21,7 +21,7 @@ export interface SelectGroup<T extends string = string> {
 }
 
 // A dropdown we own, rather than the operating system's. A native <select>
-// renders its list outside the page — the OS decides the type, spacing and
+// renders its list outside the page: the OS decides the type, spacing and
 // colours, and it can't show a price chip, a second line of explanation or a
 // greyed-out reason. This one is a button plus a listbox, so it looks the same
 // on every platform and can carry everything a choice needs to be understood.
@@ -148,7 +148,7 @@ export function Select<T extends string = string>({
   }, [open]);
 
   // Keep the highlighted row in view as the arrows move it. `rect` is a
-  // dependency because the panel only exists once it has been placed — without
+  // dependency because the panel only exists once it has been placed, without
   // it, opening a long list would start at the top rather than at the current
   // choice.
   useEffect(() => {

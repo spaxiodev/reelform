@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Already signed in — don't show the login form again (it reads as
+  // Already signed in, don't show the login form again (it reads as
   // "logged out"); go straight to the dashboard.
   if (user && path === "/login") {
     const url = request.nextUrl.clone();

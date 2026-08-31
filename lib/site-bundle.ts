@@ -6,8 +6,8 @@ import { SUBMISSIONS_TABLE } from "./supabase-mgmt";
 // generated HTML plus every video it features, with the remote video URLs
 // rewritten to sit next to index.html.
 //
-// One builder serves all three destinations — the zip download, a Vercel
-// deployment, and a Supabase Storage bucket — so a site cannot behave one way
+// One builder serves all three destinations, the zip download, a Vercel
+// deployment, and a Supabase Storage bucket, so a site cannot behave one way
 // when downloaded and another way when deployed.
 
 export interface SiteFile {
@@ -59,7 +59,7 @@ export async function buildSiteBundle(
   options: BundleOptions = {}
 ): Promise<{ slug: string; files: SiteFile[] }> {
   if (!project.site_html) {
-    throw new BundleError("Nothing to package yet — build the site first.", 404);
+    throw new BundleError("Nothing to package yet. Build the site first.", 404);
   }
 
   let html = project.site_html;
@@ -73,10 +73,10 @@ export async function buildSiteBundle(
     try {
       res = await fetch(video.url);
     } catch {
-      throw new BundleError("Could not fetch one of the videos — try again in a moment.", 502);
+      throw new BundleError("Could not fetch one of the videos. Try again in a moment.", 502);
     }
     if (!res.ok) {
-      throw new BundleError("Could not fetch one of the videos — try again in a moment.", 502);
+      throw new BundleError("Could not fetch one of the videos. Try again in a moment.", 502);
     }
     files.push({
       name: localName,
@@ -108,7 +108,7 @@ export async function buildSiteBundle(
  * Appends the script that makes the site's forms actually do something: every
  * submit is posted straight to the owner's Supabase `site_submissions` table.
  *
- * The anon key is embedded in the page on purpose — it is a public identifier,
+ * The anon key is embedded in the page on purpose, it is a public identifier,
  * and the table's RLS grants it insert and nothing else (see
  * provisionSiteBackend). A form that names an `action` is left alone, on the
  * assumption the owner pointed it somewhere deliberately.
@@ -176,7 +176,7 @@ function withFormBackend(html: string, backend: FormBackend, project: BundleProj
       .then(function (res) {
         if (!res.ok) throw new Error(String(res.status));
         form.reset();
-        status(form, "Thanks — we got your message.", true);
+        status(form, "Thanks, we got your message.", true);
       })
       .catch(function () {
         status(form, "Something went wrong. Please try again.", false);

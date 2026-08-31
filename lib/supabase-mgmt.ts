@@ -192,7 +192,7 @@ export const SUBMISSIONS_TABLE = "site_submissions";
  * Gives the user's Supabase project the one thing a generated static site
  * needs a backend for: somewhere to put what visitors type into its forms.
  *
- * The policy is insert-only for `anon` — the site ships with the anon key in
+ * The policy is insert-only for `anon`, the site ships with the anon key in
  * plain sight, so visitors must be able to add a row and nothing else. Reading
  * submissions requires the dashboard or a service-role key.
  */
@@ -225,7 +225,7 @@ export async function provisionSiteBackend(token: string, ref: string): Promise<
 }
 
 /**
- * Publishes the static bundle to a public Storage bucket — the cheap hosting
+ * Publishes the static bundle to a public Storage bucket, the cheap hosting
  * option for people who would rather not run a second provider. Returns the
  * public URL of the site's entry point.
  */

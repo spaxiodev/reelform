@@ -15,7 +15,7 @@ export function StatusScreen({
   eyebrow: string;
   title: string;
   body: React.ReactNode;
-  /** Small print under the actions — an error digest, a support hint. */
+  /** Small print under the actions: an error digest, a support hint. */
   detail?: React.ReactNode;
   actions: React.ReactNode;
 }) {
@@ -23,7 +23,7 @@ export function StatusScreen({
     <main id="main" className="flex-1 flex items-center justify-center px-6 py-20">
       <div className="w-full max-w-lg">
         <div className="card overflow-hidden">
-          {/* Clapper stripe — the app's film motif, used as a status band */}
+          {/* Clapper stripe, the app's film motif, used as a status band */}
           <div className="flex items-center gap-3 bg-ink px-6 py-3.5">
             <span className="rec-dot" aria-hidden />
             <span className="mono-label !text-white/60">{eyebrow}</span>

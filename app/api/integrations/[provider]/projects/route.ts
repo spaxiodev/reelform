@@ -4,7 +4,7 @@ import { getIntegration } from "@/lib/integrations";
 import { listOrganizations, listProjects } from "@/lib/supabase-mgmt";
 
 // Feeds the "which Supabase project?" picker in the deploy panel. Vercel needs
-// no equivalent — a deploy creates or reuses a project by name on its own.
+// no equivalent, a deploy creates or reuses a project by name on its own.
 export const runtime = "nodejs";
 
 export async function GET(
@@ -43,7 +43,7 @@ export async function GET(
     });
   } catch {
     return NextResponse.json(
-      { error: "Could not reach Supabase — try reconnecting the account." },
+      { error: "Could not reach Supabase. Try reconnecting the account." },
       { status: 502 }
     );
   }

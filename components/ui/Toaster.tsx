@@ -9,7 +9,7 @@ interface Toast {
   kind: ToastKind;
 }
 
-// Fire a toast from anywhere in client code — replaces browser alert().
+// Fire a toast from anywhere in client code; replaces browser alert().
 export function toast(message: string, kind: ToastKind = "info") {
   window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, kind } }));
 }

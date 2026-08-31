@@ -56,7 +56,7 @@ export function SiteChat({
           {empty && (
             <p className="text-sm text-muted leading-relaxed">
               {emptyState ??
-                "Scroll through your site above, then tell me exactly what to change — “make the hero headline bigger”, “swap the palette to something warmer”, “add a testimonials section under the second video”. I'll edit the page and it'll refresh in place."}
+                "Scroll through your site above, then tell me exactly what to change: “make the hero headline bigger”, “swap the palette to something warmer”, “add a testimonials section under the second video”. I'll edit the page and it'll refresh in place."}
             </p>
           )}
 
@@ -98,7 +98,7 @@ export function SiteChat({
               onChange={(e) => onDraftChange(e.target.value)}
               disabled={busy}
               onKeyDown={(e) => {
-                // Enter sends, Shift+Enter makes a new line — chat conventions.
+                // Enter sends and Shift+Enter starts a new line, per chat conventions.
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   if (draft.trim() && !busy) onSend();

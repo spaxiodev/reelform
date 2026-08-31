@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { AppHeader } from "@/components/AppHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export function LegalShell({
@@ -15,22 +15,10 @@ export function LegalShell({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-6 md:px-10 py-5 border-b border-line">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="rec-dot" aria-hidden />
-          <span className="font-semibold tracking-tight text-lg">
-            Reel<span className="text-primary">form</span>
-          </span>
-        </Link>
-        <nav className="flex items-center gap-6">
-          <Link href="/pricing" className="text-sm text-muted hover:text-ink transition-colors">
-            Pricing
-          </Link>
-          <Link href="/login" className="text-sm text-muted hover:text-ink transition-colors">
-            Sign in
-          </Link>
-        </nav>
-      </header>
+      <AppHeader links={[
+        { href: "/pricing", label: "Pricing" },
+        { href: "/login", label: "Sign in" },
+      ]} />
 
       <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-3xl mx-auto w-full">
         <p className="mono-label">{label}</p>

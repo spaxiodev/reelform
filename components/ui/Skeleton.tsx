@@ -1,5 +1,5 @@
 // Shimmering placeholders for route-level loading.tsx files. Purely
-// decorative — the surrounding <div role="status"> carries the announcement,
+// decorative: the surrounding <div role="status"> carries the announcement,
 // so these are hidden from assistive tech.
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden className={`skeleton rounded-lg ${className}`} />;

@@ -12,7 +12,7 @@ import { releaseFree } from "@/lib/entitlements";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// GET /api/video/status?videoId=... — polls the Higgsfield request for one clip
+// GET /api/video/status?videoId=... polls the Higgsfield request for one clip
 // and persists the outcome.
 export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     .single();
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
-  // Already settled — nothing to poll.
+  // Already settled, nothing to poll.
   if (video.status === "succeeded" || video.status === "failed" || !video.task_id) {
     return NextResponse.json({ videoId, status: video.status, videoUrl: video.url });
   }
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   const admin = createSupabaseAdmin();
 
   if (task.status === "succeeded") {
-    // Re-host in our own storage — provider CDN URLs can expire.
+    // Re-host in our own storage, provider CDN URLs can expire.
     const permanentUrl = task.videoUrl ? await storeVideo(admin, video.project_id, task.videoUrl) : null;
     const videoUrl = permanentUrl ?? task.videoUrl;
     await admin

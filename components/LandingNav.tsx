@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 // Landing nav: two separate frosted pills (logo left, actions right) rather
-// than one centered bar — a distinct layout, with a coral CTA instead of a
+// than one centered bar: a distinct layout, with a coral CTA instead of a
 // black pill. Fixed so it floats over the scrubbing video hero.
 export async function LandingNav() {
   const supabase = await createSupabaseServer();
@@ -11,7 +11,15 @@ export async function LandingNav() {
   } = await supabase.auth.getUser();
 
   const ctaCls =
-    "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(221,79,38,0.35)] hover:bg-primary-deep transition-colors";
+    "rounded-full bg-primary px-3.5 sm:px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(221,79,38,0.35)] hover:bg-primary-deep transition-colors";
+  // "Start building" plus a logo pill overruns a 390px screen, so phones get
+  // the verb on its own.
+  const cta = (
+    <>
+      <span className="sm:hidden">Start</span>
+      <span className="hidden sm:inline">Start building</span>
+    </>
+  );
   const linkCls =
     "hidden sm:inline-flex rounded-full px-3.5 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-black/[0.04] transition-colors";
 
@@ -39,7 +47,7 @@ export async function LandingNav() {
           </Link>
           {user ? (
             <Link href="/create" className={ctaCls}>
-              Start building
+              {cta}
             </Link>
           ) : (
             <>
@@ -47,7 +55,7 @@ export async function LandingNav() {
                 Log in
               </Link>
               <Link href="/create" className={ctaCls}>
-                Start building
+                {cta}
               </Link>
             </>
           )}

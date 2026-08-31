@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SiteVideo } from "./claude";
 
-// A production can feature several clips (project_videos). The first one —
-// position 0 — is the hero, and is mirrored back onto projects.video_* so the
+// A production can feature several clips (project_videos). The first one,
+// position 0, is the hero, and is mirrored back onto projects.video_* so the
 // single-video paths (export, showcase, older rows) keep working.
 
 export type VideoStatus = "none" | "queued" | "running" | "succeeded" | "failed";
@@ -45,7 +45,7 @@ export async function listVideos(
   return (data as VideoRow[] | null) ?? [];
 }
 
-/** Only the clips that finished rendering — what the site can actually embed. */
+/** Only the clips that finished rendering, what the site can actually embed. */
 export function readyVideos(rows: VideoRow[]): SiteVideo[] {
   return rows
     .filter((v): v is VideoRow & { url: string } => v.status === "succeeded" && Boolean(v.url))

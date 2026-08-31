@@ -33,15 +33,15 @@ export function CheckoutButton({
       }
       const data = await res.json();
       if (data.url) {
-        // Fires before the redirect — Stripe completion is confirmed
+        // Fires before the redirect; Stripe completion is confirmed
         // server-side by the webhook, not here.
         trackEvent("checkout_started", { kind, plan: id });
         location.href = data.url;
         return;
       }
-      toast(data.error ?? "Checkout failed — please try again.", "error");
+      toast(data.error ?? "Checkout failed. Please try again.", "error");
     } catch {
-      toast("Network error — please try again.", "error");
+      toast("Network error. Please try again.", "error");
     }
     setBusy(false);
   }
@@ -68,7 +68,7 @@ export function PortalButton({ className, children }: { className?: string; chil
       }
       toast(data.error ?? "Could not open the billing portal.", "error");
     } catch {
-      toast("Network error — please try again.", "error");
+      toast("Network error. Please try again.", "error");
     }
     setBusy(false);
   }

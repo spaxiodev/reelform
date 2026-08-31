@@ -1,6 +1,6 @@
 // Central pricing config: credit costs for AI actions, plans, and top-ups.
 // 1 credit ≈ $0.01 of retail value. Action costs are set at roughly 2× the
-// underlying provider cost, targeting a ~50%+ gross margin — re-tune the
+// underlying provider cost, targeting a ~50%+ gross margin, re-tune the
 // numbers here as real usage data comes in (see README → Pricing).
 
 export type ModelId =
@@ -30,7 +30,7 @@ export const MODEL_TOKEN_RATES: Record<ModelId, { input: number; output: number 
 const CREDIT_USD = 0.01;
 const CREDIT_MARGIN = 2;
 
-// Every edit costs at least this — covers the fixed overhead of a round-trip
+// Every edit costs at least this, covers the fixed overhead of a round-trip
 // even for a one-word tweak, and keeps "free" edits from being abused.
 export const EDIT_MIN_CREDITS = 2;
 
@@ -57,7 +57,7 @@ export function meteredCredits(model: ModelId, usage: TokenUsage): number {
 // A deliberately-generous credit hold reserved before an edit runs and
 // reconciled to the true charge afterwards. Token estimates are intentionally
 // high (chars/3 rather than the real ~chars/4) so the hold is never below the
-// actual usage-based charge — the loop's output budget is bounded to match.
+// actual usage-based charge, the loop's output budget is bounded to match.
 export function estimateEditCredits(
   model: ModelId,
   htmlLength: number
@@ -80,7 +80,7 @@ export type Duration = number;
 // marketplaces, and they drive every credit price the studio quotes.
 //
 // ⚠ ASSUMPTION: Higgsfield's own rates may differ in either direction. Check
-// the first real invoice and re-tune here — at the 2× margin this file targets,
+// the first real invoice and re-tune here, at the 2× margin this file targets,
 // an error either way lands straight on gross margin. The spread across the
 // catalog is ~10×, so a per-model table is the only honest way to quote a cost.
 export const VIDEO_MODEL_USD_PER_SECOND: Record<VideoModelId, number> = {
@@ -178,14 +178,14 @@ export const TOPUPS: Topup[] = [
   { id: "large", name: "6,200 credits", priceUsd: 60, credits: 6200, priceEnv: "STRIPE_PRICE_TOPUP_LARGE" },
 ];
 
-// New accounts get one complete website free — one hero video and one site
-// build — instead of a credit float. See lib/entitlements.ts for the rule; the
+// New accounts get one complete website free, one hero video and one site
+// build, instead of a credit float. See lib/entitlements.ts for the rule; the
 // flags live on `profiles`, so the free tier can't be topped up.
 export const FREE_BUILD = { videos: 1, siteBuilds: 1 } as const;
 
 // ── Deployment (push a finished site to the user's own infrastructure) ────
 // Deploys run against the *customer's* Vercel and Supabase accounts, so they
-// cost us nothing at a provider — the gate is a plan feature, not a credit
+// cost us nothing at a provider, the gate is a plan feature, not a credit
 // price. The cap is on how many distinct sites may be live at once, which is
 // what separates a freelancer from an agency.
 
@@ -213,7 +213,7 @@ export function deploySiteLimit(plan: string | null | undefined): number {
 /**
  * How full an account's credit tank is, for the ring drawn around the avatar.
  * A plan's monthly grant is the natural full mark; free accounts have no grant,
- * so the smallest top-up stands in as the scale — it keeps the ring meaningful
+ * so the smallest top-up stands in as the scale, it keeps the ring meaningful
  * for someone who has only ever bought credits, and it can only ever read as
  * "some" rather than a promise about the plan.
  */
@@ -225,5 +225,5 @@ export function creditRing(
   return { fraction: Math.max(0, Math.min(1, credits / allowance)), allowance };
 }
 
-/** The cheapest plan that unlocks deploys — named in upgrade prompts. */
+/** The cheapest plan that unlocks deploys, named in upgrade prompts. */
 export const DEPLOY_MIN_PLAN = PLANS.find((p) => DEPLOY_SITE_LIMIT[p.id] > 0)!;

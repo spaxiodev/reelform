@@ -1,7 +1,7 @@
 import { track } from "@vercel/analytics";
 
 // Funnel instrumentation. Vercel Analytics is cookieless and does not collect
-// personal data, so no consent banner is required — which also means we must
+// personal data, so no consent banner is required, which also means we must
 // never pass anything identifying here. Ids, emails and prompt text stay out;
 // only the shape of the action goes in.
 //

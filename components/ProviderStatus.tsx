@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 // A live/offline badge for the video provider, shown wherever someone is about
-// to spend credits on a render. It answers one question — is it worth pressing
-// generate right now? — so it stays a dot and three words, and it never blocks
+// to spend credits on a render. It answers one question: is it worth pressing
+// generate right now? So it stays a dot and three words, and it never blocks
 // or disables anything: the API can recover between the poll and the click.
 
 type Health = { status: "live" | "offline"; detail?: string } | null;
@@ -61,7 +61,7 @@ export default function ProviderStatus({ className = "" }: { className?: string 
       <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
       <span>
         Higgsfield API Status: <span className="font-medium text-ink">{label}</span>
-        {health?.detail && health.status === "offline" ? ` — ${health.detail}` : ""}
+        {health?.detail && health.status === "offline" ? ` · ${health.detail}` : ""}
       </span>
     </span>
   );

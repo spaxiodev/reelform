@@ -18,7 +18,7 @@ const FORMATS: { id: Mode; title: string; tagline: string; desc: string }[] = [
     title: "Scrub website",
     tagline: "Scrolling plays the video",
     desc:
-      "Your scroll wheel becomes the play button. Scroll down and the footage advances frame by frame; scroll up and it rewinds. The video never plays on its own — the visitor drives it, so the page feels like something they're operating rather than watching. Best for reveals, product shots and anything where the motion is the story.",
+      "Your scroll wheel becomes the play button. Scroll down and the footage advances frame by frame; scroll up and it rewinds. The video never plays on its own; the visitor drives it, so the page feels like something they're operating rather than watching. Best for reveals, product shots and anything where the motion is the story.",
   },
   {
     id: "loop",
@@ -74,7 +74,7 @@ export function CreateFlow({
     setStep(0);
 
     try {
-      // 1 — the project, plus its empty hero slot.
+      // 1. The project, plus its empty hero slot.
       const projectRes = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,7 +89,7 @@ export function CreateFlow({
       }
       trackEvent("project_created", { videoMode: mode, via: "create_flow" });
 
-      // 2 — turn the website brief into a shot prompt. Free, and it keeps the
+      // 2. Turn the website brief into a shot prompt. Free, and it keeps the
       // form down to a single box: the user describes the site, not the camera.
       setStep(1);
       const shotRes = await fetch("/api/site/suggest-shot", {
@@ -98,10 +98,10 @@ export function CreateFlow({
         body: JSON.stringify({ name: nameFrom(brief), siteBrief: brief, role: "Hero video" }),
       });
       const suggestion = await shotRes.json();
-      // A failed suggestion isn't fatal — the brief itself is a usable prompt.
+      // A failed suggestion isn't fatal: the brief itself is a usable prompt.
       const prompt: string = suggestion.prompt?.trim() || brief.trim();
 
-      // 3 — shoot it.
+      // 3. Shoot it.
       setStep(2);
       const videoRes = await fetch("/api/video/generate", {
         method: "POST",
@@ -134,7 +134,7 @@ export function CreateFlow({
       while (status !== "succeeded") {
         if (Date.now() > deadline) {
           return fail(
-            "The video is taking unusually long. It's still rendering — open it from your projects in a minute."
+            "The video is taking unusually long. It's still rendering; open it from your projects in a minute."
           );
         }
         await new Promise((r) => setTimeout(r, 10000));
@@ -142,11 +142,11 @@ export function CreateFlow({
         const data = await res.json();
         status = data.status;
         if (status === "failed") {
-          return fail(data.error ?? "The video failed to render. Nothing was charged — try again.");
+          return fail(data.error ?? "The video failed to render. Nothing was charged, so try again.");
         }
       }
 
-      // 4 — hand the footage to Claude and let it build the page.
+      // 4. Hand the footage to Claude and let it build the page.
       setStep(3);
       const siteRes = await fetch("/api/site/generate", {
         method: "POST",
@@ -178,7 +178,7 @@ export function CreateFlow({
       trackEvent("site_build_completed", { via: "create_flow", videoMode: mode });
       router.push(`/studio/${project.id}`);
     } catch {
-      fail("Network error — nothing was charged. Please try again.");
+      fail("Network error and nothing was charged. Please try again.");
     }
   }
 
@@ -267,7 +267,7 @@ export function CreateFlow({
       </h1>
       <p className="mt-3 text-muted leading-relaxed max-w-2xl">
         Say what the business is and how it should feel. Claude writes the page and directs the
-        hero shot from this — you don&apos;t need to describe the video separately.
+        hero shot from this, so you don&apos;t need to describe the video separately.
       </p>
 
       <div className="mt-8 card p-2">
@@ -282,7 +282,7 @@ export function CreateFlow({
         <div className="flex items-center justify-between gap-4 border-t border-line px-4 py-3">
           <p className="text-xs text-faint">
             {isFirstBuild
-              ? "Your first website is free — no card needed."
+              ? "Your first website is free, no card needed."
               : "Building another site uses your plan's credits."}
           </p>
           <button type="submit" disabled={!brief.trim()} className="btn-primary shrink-0">
@@ -302,7 +302,7 @@ export function CreateFlow({
         </div>
       )}
 
-      {/* Shot controls — deliberately below the brief: sensible defaults mean
+      {/* Shot controls, deliberately below the brief: sensible defaults mean
           most people never touch them. The price of the shot they describe is
           right here, so nobody has to guess before pressing generate. */}
       <div className="mt-8 flex items-center justify-between gap-4">
@@ -315,7 +315,7 @@ export function CreateFlow({
         onChange={(patch) => setShot((s) => ({ ...s, ...patch }))}
         isAdmin={isAdmin}
         costLabel={(credits) =>
-          isFirstBuild ? `${credits} credits — free on your first build` : `${credits} credits`
+          isFirstBuild ? `${credits} credits, free on your first build` : `${credits} credits`
         }
       />
     </form>

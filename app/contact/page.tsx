@@ -28,7 +28,7 @@ export default function ContactPage() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <strong className="text-ink">Failed generation?</strong> Credits are refunded to your
-            balance automatically — check your dashboard first.
+            balance automatically, so check your dashboard first.
           </li>
           <li>
             <strong className="text-ink">Billing or refunds?</strong> See our{" "}

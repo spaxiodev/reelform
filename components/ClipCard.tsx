@@ -117,7 +117,7 @@ export function ClipCard({
             <span className="rec-dot" aria-hidden /> RENDERING
           </p>
           <p className="text-sm text-muted">
-            Usually under two minutes — it&apos;ll appear here the moment it&apos;s ready.
+            Usually under two minutes. It&apos;ll appear here the moment it&apos;s ready.
           </p>
         </div>
       ) : ready && !reshooting ? (
@@ -128,6 +128,10 @@ export function ClipCard({
             muted
             loop
             playsInline
+            /* metadata, not auto: the review player shouldn't pull the whole
+               clip over cellular before the user asks to watch it, but it does
+               need enough to paint a first frame instead of a black box. */
+            preload="metadata"
             className="w-full rounded-lg border border-line bg-black"
           />
           <div className="flex items-center justify-between gap-3">
@@ -152,7 +156,7 @@ export function ClipCard({
 
           {clip.status === "failed" && (
             <p className="text-xs text-danger">
-              That render failed and your credits were refunded — try adjusting the shot.
+              That render failed and your credits were refunded. Try adjusting the shot.
             </p>
           )}
 
@@ -171,7 +175,7 @@ export function ClipCard({
 
           <textarea
             className="field min-h-[110px] resize-y"
-            placeholder="Describe the shot: subject, camera movement, lighting, mood… — or let us suggest one from your brief."
+            placeholder="Describe the shot: subject, camera movement, lighting, mood… Or let us suggest one from your brief."
             value={draft.prompt}
             onChange={(e) => onDraftChange({ prompt: e.target.value })}
           />

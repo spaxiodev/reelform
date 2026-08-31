@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
           "/studio/",
           "/account",
           // Published sites are served as raw sandboxed HTML with no canonical
-          // page around them — indexing them would compete with the user's own
+          // page around them, indexing them would compete with the user's own
           // hosted copy, which is where we want the traffic to land.
           "/showcase/",
           // Auth entry points carry `next` and `mode` params that generate

@@ -38,7 +38,7 @@ export async function GET(
   }
 
   // Deploying is a Pro-and-up feature, so connecting the accounts that make
-  // it possible is too — no point collecting a token nothing may use.
+  // it possible is too, no point collecting a token nothing may use.
   const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
   if (!canDeploy(profile?.plan) && !isAdminUser(user.id)) {
     return NextResponse.redirect(`${origin}/pricing?upgrade=${DEPLOY_MIN_PLAN.id}&reason=deploy`);

@@ -12,49 +12,49 @@ import { faqJsonLd, JsonLd } from "@/lib/seo";
 const FAQS = [
   {
     q: "What exactly do I get?",
-    a: "A complete, responsive single-file website built around your AI-generated hero video — real copy written for your business, not lorem ipsum. Preview it live, keep iterating with Claude, then download a zip with the HTML page and your hero video, ready to host anywhere.",
+    a: "A complete, responsive single-file website built around your AI-generated hero video, with real copy written for your business, not lorem ipsum. Preview it live, keep iterating with Claude, then download a zip with the HTML page and your hero video, ready to host anywhere.",
   },
   {
     q: "What if I don't like the video?",
-    a: "Nothing goes to your site without your approval. Seedance shows you the footage first — reshoot as many times as you like, and only build once it's right. Failed generations are automatically refunded.",
+    a: "Nothing goes to your site without your approval. You see the footage first. Reshoot as many times as you like, and only build once it's right. Failed generations are automatically refunded.",
   },
   {
     q: "How do credits work?",
-    a: "Every video shoot and every Claude build has a transparent credit price shown before you click. Subscriptions refill monthly at the best rate; top-up credits never expire. New accounts get one complete website free — a hero video and a full build — then pick a plan to keep iterating.",
+    a: "Every video shoot and every Claude build has a transparent credit price shown before you click. Subscriptions refill monthly at the best rate; top-up credits never expire. New accounts get one complete website free (a hero video and a full build), then pick a plan to keep iterating.",
   },
   {
     q: "Can I change the site after it's built?",
-    a: "Yes — that's the point. Keep prompting Claude for edits (“darker palette, add testimonials”), or reshoot the video and tell Claude to swap it in. Every change streams into the live preview.",
+    a: "Yes, that's the point. Keep prompting Claude for edits (“darker palette, add testimonials”), or reshoot the video and tell Claude to swap it in. Every change streams into the live preview.",
   },
 ];
 
-// Each step is illustrated by real Seedance footage rather than a colour field.
+// Each step is illustrated by real generated footage rather than a colour field.
 const FEATURES = [
   {
     badge: "STEP 01",
     title: "Direct the shot",
-    body: "Describe the footage in plain language — mood, motion, the world your brand lives in. Seedance renders it in under two minutes. Preview and reshoot until it's right.",
+    body: "Describe the footage in plain language: mood, motion, the world your brand lives in. Pick a video model and it renders in about two minutes. Preview and reshoot until it's right.",
     video: "/ReferenceVids/hf_20260616_211244_e8668434-14ae-41be-8a46-92a921c7736c.mp4",
-    tag: "SEEDANCE",
+    tag: "VIDEO",
   },
   {
     badge: "STEP 02",
     title: "Send it to Claude",
-    body: "Pick your model — fast Haiku drafts to Opus 4.8 flagship builds. Claude writes a complete, responsive site around your footage, streamed live into the preview.",
+    body: "Pick your model, from fast Haiku drafts to Opus 4.8 flagship builds. Claude writes a complete, responsive site around your footage, streamed live into the preview.",
     video: "/ReferenceVids/hf_20260615_235620_4bf5ef7e-46f2-48c2-bb68-db1bf39f38ef.mp4",
     tag: "CLAUDE",
   },
   {
     badge: "STEP 03",
     title: "Loop it or scrub it",
-    body: "Choose ambient loop playback, or cinematic scroll-scrubbing where the video plays forward as visitors scroll. Then download a zip — the HTML page plus your hero video — and host it anywhere.",
+    body: "Choose ambient loop playback, or cinematic scroll-scrubbing where the video plays forward as visitors scroll. Then download a zip (the HTML page plus your hero video) and host it anywhere.",
     video: "/ReferenceVids/hf_20260618_011147_3cf1fbd4-6e55-40ca-9ca0-a7a96ef16a19.mp4",
     tag: "SHIP",
   },
 ];
 
 const CAPABILITIES = [
-  { title: "Seedance shots", body: "Cinematic AI footage from a prompt.", badge: "Video" },
+  { title: "Frontier video models", body: "Kling, Hailuo, Sora, Seedance and more.", badge: "Video" },
   { title: "Opus · Sonnet · Haiku", body: "Three Claude models, your call.", badge: "Build" },
   { title: "Loop & scroll-scrub", body: "Two premium playback modes.", badge: "Motion" },
   { title: "Zip export", body: "HTML + your video, host anywhere.", badge: "Own it" },
@@ -66,13 +66,13 @@ export default function Home() {
       <LandingNav />
 
       <main id="main" className="flex-1">
-        {/* Same Q&A the FAQ section renders below — keep them in sync or the
+        {/* Same Q&A the FAQ section renders below. Keep them in sync or the
             rich result will disagree with the page. */}
         <JsonLd data={faqJsonLd(FAQS)} />
-        {/* ── Hero — scroll-scrubbed video ──────────────────────────── */}
+        {/* ── Hero: scroll-scrubbed video ──────────────────────────── */}
         <HeroScrub />
 
-        {/* ── Product mockup — scrubs as you scroll ─────────────────── */}
+        {/* ── Product mockup: scrubs as you scroll ─────────────────── */}
         <ScrubPreview />
 
         {/* ── Everything you need ───────────────────────────────────── */}
@@ -129,7 +129,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Studio feature band — sunset + grid floor ─────────────── */}
+        {/* ── Studio feature band: sunset + grid floor ─────────────── */}
         <section className="px-4 md:px-6 max-w-6xl mx-auto">
           <Reveal>
             <div className="sky-band grid-floor rounded-[2.5rem] md:rounded-[3rem] overflow-hidden px-6 py-20 md:py-28 text-center">
@@ -145,7 +145,7 @@ export default function Home() {
                   Camera to live site.
                 </h2>
                 <p className="mx-auto mt-5 max-w-xl text-lg text-white/90 leading-relaxed">
-                  Brief, video, build — each step takes over the whole screen. Watch your footage
+                  Brief, video, build: each step takes over the whole screen. Watch your footage
                   render, preview the finished site in the browser, and download it in a click.
                 </p>
                 <div className="mt-8 flex justify-center">
@@ -228,7 +228,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Final CTA — big rounded sunset card ───────────────────── */}
+        {/* ── Final CTA: big rounded sunset card ───────────────────── */}
         <section className="px-4 md:px-6 pb-24 max-w-6xl mx-auto">
           <Reveal>
             <div className="sky-band grid-floor rounded-[2.5rem] md:rounded-[3rem] overflow-hidden px-8 py-20 md:px-16 md:py-24">
@@ -245,7 +245,7 @@ export default function Home() {
                 </h2>
                 <p className="mt-5 text-lg text-white/90 leading-relaxed">
                   Plans from ${PLANS[0].priceUsd}/mo, top up anytime, unused credits never expire.
-                  Your first website is free — one hero video and a full build, no card needed.
+                  Your first website is free: one hero video and a full build, no card needed.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link

@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { PLANS, TOPUPS } from "./pricing";
 
-// Lazy singleton — constructing Stripe at module load breaks `next build`
+// Lazy singleton, constructing Stripe at module load breaks `next build`
 // when env vars aren't present.
 let _stripe: Stripe | null = null;
 export function getStripe(): Stripe {
@@ -15,7 +15,7 @@ export function getStripe(): Stripe {
 
 export function priceIdFor(envName: string): string {
   const id = process.env[envName];
-  if (!id) throw new Error(`Missing env var ${envName} — create the Stripe price and set it.`);
+  if (!id) throw new Error(`Missing env var ${envName}. Create the Stripe price and set it.`);
   return id;
 }
 

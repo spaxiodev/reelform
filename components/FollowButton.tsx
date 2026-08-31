@@ -40,7 +40,7 @@ export function FollowButton({
             .eq("follower_id", viewerId)
             .eq("followee_id", profileId);
     if (error) {
-      toast("Something went wrong — please try again.", "error");
+      toast("Something went wrong. Please try again.", "error");
     } else {
       setState(state === "none" ? (isPrivate ? "requested" : "following") : "none");
       router.refresh();

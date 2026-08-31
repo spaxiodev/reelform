@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppHeader } from "@/components/AppHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { StatusScreen } from "@/components/ui/StatusScreen";
 
@@ -11,29 +12,18 @@ export default function NotFound() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Deliberately NOT <SiteHeader />. That component reads the session,
-          which touches cookies — and because the root not-found renders into
+          which touches cookies. Because the root not-found renders into
           every route's shell, one cookie read here forces the whole site to
-          render dynamically. This static header keeps the marketing and legal
-          pages prerendered. */}
-      <header className="flex items-center justify-between px-6 md:px-10 py-5 border-b border-line">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="rec-dot" aria-hidden />
-          <span className="font-semibold tracking-tight text-lg">
-            Reel<span className="text-primary">form</span>
-          </span>
+          render dynamically. AppHeader reads nothing, so the marketing and
+          legal pages stay prerendered. */}
+      <AppHeader links={[
+        { href: "/showcase", label: "Showcase" },
+        { href: "/pricing", label: "Pricing" },
+      ]}>
+        <Link href="/dashboard" className="btn-primary !py-2 !px-3.5 sm:!px-4 !text-xs sm:!text-sm">
+          Open studio
         </Link>
-        <nav className="flex items-center gap-6">
-          <Link href="/showcase" className="text-sm text-muted hover:text-ink transition-colors">
-            Showcase
-          </Link>
-          <Link href="/pricing" className="text-sm text-muted hover:text-ink transition-colors">
-            Pricing
-          </Link>
-          <Link href="/dashboard" className="btn-primary !py-2 !px-4 text-sm">
-            Open studio
-          </Link>
-        </nav>
-      </header>
+      </AppHeader>
 
       <StatusScreen
         code="404"
@@ -41,7 +31,7 @@ export default function NotFound() {
         title="This one ended up on the cutting-room floor."
         body={
           <>
-            The page you asked for doesn&apos;t exist — it may have been renamed, unpublished, or
+            The page you asked for doesn&apos;t exist. It may have been renamed or unpublished, or
             the link may have a typo in it.
           </>
         }

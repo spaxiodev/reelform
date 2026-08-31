@@ -33,7 +33,7 @@ export async function getBillingHistory(customerId: string): Promise<BillingHist
     let totalSpentCents = 0;
     let currency = "usd";
 
-    // Payment intents already represented by an invoice — used to skip the
+    // Payment intents already represented by an invoice, used to skip the
     // matching bare charges below so nothing is double counted.
     const invoicedPaymentIntents = new Set<string>();
     for (const inv of invoices.data) {
@@ -93,7 +93,7 @@ export async function getBillingHistory(customerId: string): Promise<BillingHist
     items.sort((a, b) => b.created - a.created);
     return { items, totalSpentCents, currency };
   } catch {
-    // Stripe not configured or API error — the page degrades gracefully.
+    // Stripe not configured or API error, the page degrades gracefully.
     return null;
   }
 }

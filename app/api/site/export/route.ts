@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "site_export");
   if (limited) return limited;
 

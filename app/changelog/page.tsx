@@ -7,7 +7,7 @@ import { RELEASES } from "@/lib/changelog";
 export const metadata = pageMeta({
   title: "Changelog",
   description:
-    "Everything we've shipped to Reelform — new capabilities, refinements and fixes, newest first.",
+    "Everything we've shipped to Reelform: new capabilities, refinements and fixes, newest first.",
   path: "/changelog",
 });
 
@@ -45,7 +45,7 @@ export default function ChangelogPage() {
         <ol className="mt-14 space-y-14">
           {RELEASES.map((release) => (
             <li key={release.version} className="relative">
-              {/* Version rail — the marker and the line down to the next entry */}
+              {/* Version rail: the marker and the line down to the next entry */}
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                 <h2 className="text-2xl font-medium tracking-tight">{release.title}</h2>
                 <span className="rounded-full bg-bg-raise border border-line px-2.5 py-0.5 font-mono text-xs font-semibold text-muted">

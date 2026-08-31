@@ -97,7 +97,7 @@ export default function PricingPage() {
             Push it live on your own stack.
           </h2>
           <p className="mt-3 text-sm text-muted leading-relaxed max-w-2xl">
-            Connect your Vercel and Supabase accounts and a finished site ships straight into them —
+            Connect your Vercel and Supabase accounts and a finished site ships straight into them:
             the page and its videos deployed to Vercel, the contact form writing into your own
             Supabase table. You own the project, the domain and the data, so the site keeps running
             whatever happens to your Reelform plan. Deploys don&apos;t cost credits; your plan just
@@ -123,7 +123,7 @@ export default function PricingPage() {
                     className="flex justify-between gap-4 border-b border-line pb-2 last:border-0"
                   >
                     <span className="text-muted">
-                      {m.label} <span className="text-faint">— {m.blurb}</span>
+                      {m.label} <span className="text-faint">· {m.blurb}</span>
                     </span>
                     <span className="font-mono text-primary shrink-0">
                       {videoCost(m.id as VideoModelId, "720p", 5)} cr
@@ -138,7 +138,7 @@ export default function PricingPage() {
                 {Object.entries(MODELS).map(([id, m]) => (
                   <li key={id} className="flex justify-between border-b border-line pb-2 last:border-0">
                     <span className="text-muted">
-                      {m.label} <span className="text-faint">— {m.blurb}</span>
+                      {m.label} <span className="text-faint">· {m.blurb}</span>
                     </span>
                     <span className="font-mono text-primary">{m.credits} cr</span>
                   </li>

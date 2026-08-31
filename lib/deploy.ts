@@ -70,7 +70,7 @@ async function authorize(userId: string, projectId: string): Promise<ProjectRow>
 
   if (!canDeploy(profile?.plan)) {
     throw new DeployError(
-      `Deploying is a ${DEPLOY_MIN_PLAN.name} feature — upgrade to push sites live.`,
+      `Deploying is a ${DEPLOY_MIN_PLAN.name} feature. Upgrade to push sites live.`,
       402,
       "upgrade_required"
     );
@@ -175,8 +175,8 @@ export async function deployProject(userId: string, input: DeployInput): Promise
 
   // Building the bundle re-downloads every video from storage, so a publish
   // that goes to both Supabase Storage and Vercel builds it once and ships the
-  // same bytes to both. Supabase runs first, so the backend keys — the only
-  // thing that changes the bundle — are already known by the time it is built.
+  // same bytes to both. Supabase runs first, so the backend keys, the only
+  // thing that changes the bundle, are already known by the time it is built.
   let bundle: Awaited<ReturnType<typeof buildSiteBundle>> | null = null;
   const getBundle = async (backend?: { url: string; anonKey: string }) => {
     bundle ??= await buildSiteBundle(admin, project, { backend });
@@ -207,7 +207,7 @@ export async function deployProject(userId: string, input: DeployInput): Promise
         await provisionSiteBackend(integration.accessToken, ref);
       } catch (err) {
         if (dbPassword) {
-          // The project exists — remember it so the retry reuses it.
+          // The project exists, remember it so the retry reuses it.
           await admin.from("projects").update({ supabase_project_ref: ref }).eq("id", project.id);
           throw new DeployError(
             "Your new Supabase project is still starting up. Try the deploy again in a minute.",

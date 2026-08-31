@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from "./supabase/admin";
 
 // Per-user rate limits on the endpoints that cost us real money at a provider.
 // Credits bound total spend but not *rate*, and admin ids bypass credits
-// entirely — so without this a single account can drive the Anthropic and
+// entirely, so without this a single account can drive the Anthropic and
 // Higgsfield bills as fast as the network allows.
 //
 // Backed by Postgres (see supabase/migrations/20260806_rate_limits.sql) because
@@ -30,14 +30,14 @@ interface Limit {
   label: string;
 }
 
-// Ceilings sit well above real interactive use — a person iterating hard on a
+// Ceilings sit well above real interactive use, a person iterating hard on a
 // site will not notice them. They exist to stop scripts, not customers.
 const LIMITS: Record<LimitBucket, Limit> = {
   site_generate: { max: 20, windowSeconds: 3600, label: "site builds" },
   site_edit: { max: 120, windowSeconds: 3600, label: "site edits" },
   site_export: { max: 60, windowSeconds: 3600, label: "exports" },
   // Deploys run on the customer's own Vercel/Supabase quota, but each one
-  // uploads the full bundle — the ceiling is here to stop a runaway client.
+  // uploads the full bundle, the ceiling is here to stop a runaway client.
   site_deploy: { max: 30, windowSeconds: 3600, label: "deploys" },
   video_request: { max: 40, windowSeconds: 3600, label: "video requests" },
   video_generate: { max: 40, windowSeconds: 3600, label: "video renders" },
@@ -77,7 +77,7 @@ export async function checkRateLimit(
       limit: limit.max,
     };
   } catch (err) {
-    // Fail open. A limiter outage must not take down the product it protects —
+    // Fail open. A limiter outage must not take down the product it protects,
     // but it must be loud, because it means the ceiling is currently off.
     console.error(`[rate-limit] check failed for ${bucket}, allowing request:`, err);
     return {

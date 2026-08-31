@@ -18,7 +18,7 @@ function key(): Buffer {
   const secret = process.env.INTEGRATION_SECRET?.trim();
   if (!secret || secret.length < 32) {
     throw new Error(
-      "INTEGRATION_SECRET is missing or too short (needs 32+ chars) — " +
+      "INTEGRATION_SECRET is missing or too short (needs 32+ chars). " +
         "connecting Vercel or Supabase accounts is disabled until it is set."
     );
   }
@@ -43,7 +43,7 @@ export function decryptSecret(sealed: string): string {
   return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
 }
 
-/** True when INTEGRATION_SECRET is usable — lets callers degrade gracefully. */
+/** True when INTEGRATION_SECRET is usable; lets callers degrade gracefully. */
 export function secretsConfigured(): boolean {
   return (process.env.INTEGRATION_SECRET?.trim().length ?? 0) >= 32;
 }

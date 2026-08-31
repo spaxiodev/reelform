@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "video_request");
   if (limited) return limited;
 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
   if (!plan) {
     return NextResponse.json(
-      { error: "Could not work out that shot — try describing it a different way." },
+      { error: "Could not work out that shot. Try describing it a different way." },
       { status: 502 }
     );
   }
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ video, reply: plan.reply, cost });
   } catch (err) {
-    // Nothing was queued — give the credits back.
+    // Nothing was queued, give the credits back.
     if (freeShot) await releaseFree(user.id, "video");
     else if (!isAdmin) await grantCredits(user.id, cost, "refund", project.id);
     const message = err instanceof Error ? err.message : "Video generation failed";

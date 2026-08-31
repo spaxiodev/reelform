@@ -1,4 +1,4 @@
-// The public release log. Newest first — the page and the sitemap both read
+// The public release log, newest first. The page and the sitemap both read
 // from here, so adding an entry is a one-file change.
 //
 // Dates are ISO so they sort and format reliably; `date` is the release day,
@@ -20,7 +20,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         kind: "added",
-        text: "A production can now hold up to six clips — a hero plus section footage — each with its own shot, playback mode and name.",
+        text: "A production can now hold up to six clips (a hero plus section footage), each with its own shot, playback mode and name.",
       },
       {
         kind: "added",
@@ -59,7 +59,7 @@ export const RELEASES: Release[] = [
       },
       {
         kind: "added",
-        text: "Keep editing by chat — every instruction streams into the live preview.",
+        text: "Keep editing by chat: every instruction streams into the live preview.",
       },
       {
         kind: "added",

@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-ink">Payment data.</strong> Payments are processed by Stripe. We
-          never see or store your full card number — we keep only your Stripe customer reference,
+          never see or store your full card number. We keep only your Stripe customer reference,
           plan, and credit balance.
         </p>
         <p>
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
       <LegalSection heading="3. How we use your data">
         <p>We use your data to:</p>
         <ul className="list-disc pl-5 space-y-1.5">
-          <li>provide the Service — generate videos, build sites, and store your projects;</li>
+          <li>provide the Service: generate videos, build sites, and store your projects;</li>
           <li>process payments and manage your credit balance;</li>
           <li>send transactional emails (receipts, account notices);</li>
           <li>keep the Service secure and prevent abuse;</li>
@@ -66,22 +66,22 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
-            <strong className="text-ink">Anthropic</strong> — your prompts are sent to the Claude
+            <strong className="text-ink">Anthropic</strong>: your prompts are sent to the Claude
             API to build your websites;
           </li>
           <li>
-            <strong className="text-ink">Higgsfield</strong> — your video prompts are sent
+            <strong className="text-ink">Higgsfield</strong>: your video prompts are sent
             to generate footage;
           </li>
           <li>
-            <strong className="text-ink">Supabase</strong> — authentication, database, and file
+            <strong className="text-ink">Supabase</strong>: authentication, database, and file
             storage;
           </li>
           <li>
-            <strong className="text-ink">Stripe</strong> — payment processing;
+            <strong className="text-ink">Stripe</strong>: payment processing;
           </li>
           <li>
-            <strong className="text-ink">Vercel</strong> — hosting and infrastructure.
+            <strong className="text-ink">Vercel</strong>: hosting and infrastructure.
           </li>
         </ul>
       </LegalSection>
@@ -109,8 +109,7 @@ export default function PrivacyPage() {
           certain processing. To exercise any of these rights, email{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">
             {CONTACT_EMAIL}
-          </a>{" "}
-          — we respond within 30 days.
+          </a>. We respond within 30 days.
         </p>
       </LegalSection>
 
@@ -132,7 +131,7 @@ export default function PrivacyPage() {
       <LegalSection heading="10. Changes to this policy">
         <p>
           We may update this policy from time to time. Material changes will be announced on this
-          page with an updated date, and — for significant changes — by email.
+          page with an updated date, and by email for significant changes.
         </p>
       </LegalSection>
     </LegalShell>

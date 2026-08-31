@@ -10,8 +10,8 @@ import { MODELS, meteredCredits, estimateEditCredits, EDIT_MIN_CREDITS, type Mod
 import { listVideos, readyVideos } from "@/lib/videos";
 
 // Agentic, Claude-Code-style edits. Streams newline-delimited JSON events:
-//   {"type":"text","text":"..."}      — Claude's narration, token by token
-//   {"type":"step","label":"..."}      — a tool action landed
+//   {"type":"text","text":"..."}      Claude's narration, token by token
+//   {"type":"step","label":"..."}      a tool action landed
 //   {"type":"done","html":"...","credits":N,"summary":"..."}
 //   {"type":"error","message":"..."}
 // Billing is metered: a generous hold is reserved up front, then reconciled to
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  // Bounds provider spend per account — credits cap total spend, not rate.
+  // Bounds provider spend per account, credits cap total spend, not rate.
   const limited = await enforceRateLimit(user.id, "site_edit");
   if (limited) return limited;
 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Prior turns of the site chat, so follow-ups resolve against what was just
-  // discussed. Shot messages are a different thread — skip them.
+  // discussed. Shot messages are a different thread, skip them.
   const { data: priorMessages } = await supabase
     .from("messages")
     .select("role, content")
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   const instruction = body.instruction.trim();
   const isAdmin = isAdminUser(user.id);
-  // Editing a finished site is a subscriber feature — the free build is one shot.
+  // Editing a finished site is a subscriber feature; the free build is one shot.
   if (!isAdmin) {
     const grant = await authorizeSiteBuild(supabase, user.id, "edit");
     if (!grant.ok) {
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           await refundHold();
           send(controller, {
             type: "error",
-            message: "The model declined this request. Credits were refunded — try rephrasing.",
+            message: "The model declined this request. Credits were refunded, so try rephrasing.",
           });
           controller.close();
           return;
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
           await refundHold();
           send(controller, {
             type: "error",
-            message: "No change was made. Credits were refunded — try being more specific.",
+            message: "No change was made. Credits were refunded, so try being more specific.",
           });
           controller.close();
           return;
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         await refundHold();
         const message = err instanceof Error ? err.message : "Edit failed";
-        send(controller, { type: "error", message: `${message} — credits were refunded.` });
+        send(controller, { type: "error", message: `${message} Credits were refunded.` });
         controller.close();
       }
     },

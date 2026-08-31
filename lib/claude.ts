@@ -9,29 +9,51 @@ OUTPUT RULES (strict):
 - Output ONLY the HTML document, starting with <!DOCTYPE html>. No markdown fences, no commentary before or after.
 - Everything inline: <style> and <script> tags inside the one file. No external JS/CSS files. Google Fonts via <link> are allowed.
 - The site must be responsive, accessible (semantic landmarks, alt text, focus states), and look polished on mobile and desktop.
+- <head> MUST carry <meta name="viewport" content="width=device-width, initial-scale=1">. Without it a phone renders the page at 980px wide and zooms out, and every other responsive rule here is dead.
+- Build the phone layout as a real layout, not a squeezed desktop one: single column, type that steps down, tap targets of at least 44px, and no element with a fixed pixel width wider than about 320px.
 
 DESIGN RULES:
 - NEVER use generic AI-generated aesthetics: no Inter/Roboto/Arial/system font stacks, no purple-gradient-on-white cliches, no cookie-cutter hero-features-pricing-footer sameness. Choose distinctive fonts, a cohesive palette derived from the described brand/industry, and add micro-interactions and scroll effects that fit the tone.
-- Write real, specific copy for the user's business — never lorem ipsum or [placeholder].
-- Include a coherent set of sections appropriate to the brief (e.g. hero, value props, social proof, CTA, footer) — adapt to the industry rather than forcing a template.
+- Write real, specific copy for the user's business, never lorem ipsum or [placeholder].
+- Include a coherent set of sections appropriate to the brief (e.g. hero, value props, social proof, CTA, footer); adapt to the industry rather than forcing a template.
 
 VIDEO INTEGRATION:
-The brief lists one or more generated videos. Each has a label (how the user wants it used), the prompt it was generated from, a URL, and its own playback mode. USE EVERY VIDEO IN THE LIST — the first one is the hero; place the rest as full-bleed feature panels at sensible points down the page, following their labels. Never reuse one video's URL for another slot and never invent a URL that isn't in the list.
+The brief lists one or more generated videos. Each has a label (how the user wants it used), the prompt it was generated from, a URL, and its own playback mode. USE EVERY VIDEO IN THE LIST: the first one is the hero; place the rest as full-bleed feature panels at sensible points down the page, following their labels. Never reuse one video's URL for another slot and never invent a URL that isn't in the list.
 
 For a video whose mode is "loop":
 <video class="hero-video" autoplay muted loop playsinline preload="auto" src="VIDEO_URL"></video>
 Cover the container (object-fit: cover), overlay text with a scrim gradient for contrast.
+The muted+playsinline pair is what makes iOS autoplay at all: never drop either, and never add controls or audio to a background loop.
 
 For a video whose mode is "scrub" (video scrubs with page scroll):
-- Place the video inside a tall scroll section (e.g. height: 400vh) carrying class "scrub-section", with a position: sticky full-viewport container inside it.
+- Place the video inside a tall scroll section (e.g. height: 400vh) carrying class "scrub-section", with a position: sticky full-viewport container inside it. Set that height in a min-width media query or as an inline style the script can override: on phones the script collapses the section, because a viewport-tall pin with nothing scrubbing in it is just a wall between the visitor and the page.
 - The <video> must carry class "scrub-video" and be: muted playsinline preload="auto" disablepictureinpicture, with object-fit: cover. No autoplay, no loop, no controls.
 - Each scrubbing video needs its OWN .scrub-section wrapper; the script below drives every pair on the page.
-- Include this scroll-scrub script EXACTLY ONCE, verbatim. Do not replace it with a rAF/lerp version — that is what makes scrubbing feel laggy:
+- Include this scroll-scrub script EXACTLY ONCE, verbatim. Do not replace it with a rAF/lerp version; that is what makes scrubbing feel laggy:
 <script>
 (function () {
   document.querySelectorAll('.scrub-section').forEach(function (section) {
     var v = section.querySelector('.scrub-video');
     if (!v) return;
+
+    // Touch devices don't scrub. Their decoders are tuned for linear playback,
+    // every currentTime seek costs a frame budget, and the URL bar resizes the
+    // viewport mid-scroll. What reads as cinematic on a trackpad reads as a
+    // stutter on a phone, so there the clip simply loops.
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches || window.innerWidth < 768) {
+      section.style.height = 'auto';
+      v.loop = true;
+      v.play().catch(function () {
+        // Low Power Mode / Data Saver refuse playback outright. Paint one real
+        // frame instead of a black box, and try again on the first tap.
+        try { v.currentTime = 0.1; } catch (e) {}
+        document.addEventListener('touchend', function once() {
+          v.play().catch(function () {});
+        }, { once: true, passive: true });
+      });
+      return;
+    }
+
     v.pause();
 
     var target = 0;    // scroll progress 0..1
@@ -49,7 +71,7 @@ For a video whose mode is "scrub" (video scrubs with page scroll):
     // and always to the newest scroll position. Writing currentTime on every
     // animation frame makes the browser coalesce and drop seeks, which is what
     // makes scroll-scrub stutter or stick. Smoothing/lerping the value also adds
-    // latency, which reads as lag — drive straight from the scroll position.
+    // latency, which reads as lag: drive straight from the scroll position.
     function pump() {
       if (!ready || busy || !v.duration) return;
       if (Math.abs(target - applied) < 0.0005) return;
@@ -69,8 +91,8 @@ For a video whose mode is "scrub" (video scrubs with page scroll):
   });
 })();
 </script>
-- Performance: never put backdrop-filter, blur(), box-shadow or CSS transitions/animations on a scrubbing video or on a full-screen layer stacked over it — per-frame compositing of those is a main cause of choppy scrubbing. A plain gradient scrim is fine. Overlay copy may fade in/out at scroll milestones, but animate only opacity/transform.
-- Only ever have one scrubbing video in the viewport at a time — space the scrub sections apart with ordinary content.
+- Performance: never put backdrop-filter, blur(), box-shadow or CSS transitions/animations on a scrubbing video or on a full-screen layer stacked over it; per-frame compositing of those is a main cause of choppy scrubbing. A plain gradient scrim is fine. Overlay copy may fade in/out at scroll milestones, but animate only opacity/transform.
+- Only ever have one scrubbing video in the viewport at a time; space the scrub sections apart with ordinary content.
 
 When the user asks for changes to an existing site, return the FULL updated HTML document (never a diff or fragment).`;
 
@@ -132,7 +154,7 @@ export function describeVideos(videos: SiteVideo[]): string {
   if (videos.length === 0) return "Videos: none.";
   const lines = videos.map((v, i) =>
     [
-      `${i + 1}. ${v.label}${i === 0 ? " (hero — open the page with this one)" : ""}`,
+      `${i + 1}. ${v.label}${i === 0 ? " (hero, open the page with this one)" : ""}`,
       `   URL: ${v.url}`,
       `   Playback mode: ${v.mode}`,
       v.prompt && `   Generated from this shot prompt (use it to inform tone/palette): ${v.prompt}`,
@@ -140,7 +162,7 @@ export function describeVideos(videos: SiteVideo[]): string {
       .filter(Boolean)
       .join("\n")
   );
-  return [`Videos (${videos.length}) — use every one of them:`, ...lines].join("\n");
+  return [`Videos (${videos.length}). Use every one of them:`, ...lines].join("\n");
 }
 
 export function buildInitialBrief(opts: {
@@ -177,21 +199,21 @@ export function buildEditBrief(opts: {
 // current HTML with tools (surgical str_replace, or a full rewrite), narrating
 // as it goes. The HTML is held here on the server and never re-sent between
 // turns, and the initial prompt (system + tools + the document) is prompt-
-// cached, so a small edit costs a small number of tokens — which is what makes
+// cached, so a small edit costs a small number of tokens, which is what makes
 // per-change metered billing fair.
 
-const EDIT_SYSTEM = `You are Reelform's website editor. You work like a code editor on a SINGLE self-contained HTML document — the user's marketing site, built around a hero video they already generated. Make the user's requested change by editing the current document, then briefly say what you changed.
+const EDIT_SYSTEM = `You are Reelform's website editor. You work like a code editor on a SINGLE self-contained HTML document (the user's marketing site) built around a hero video they already generated. Make the user's requested change by editing the current document, then briefly say what you changed.
 
 TOOLS:
-- str_replace: replace an exact, unique snippet of the current HTML with new HTML. Prefer this for targeted changes — it is precise and cheap. old_str must match the current document character-for-character (including whitespace) and appear EXACTLY once; if a snippet isn't unique, include more surrounding context. Call it multiple times for multiple edits.
+- str_replace: replace an exact, unique snippet of the current HTML with new HTML. Prefer this for targeted changes; it is precise and cheap. old_str must match the current document character-for-character (including whitespace) and appear EXACTLY once; if a snippet isn't unique, include more surrounding context. Call it multiple times for multiple edits.
 - rewrite: replace the ENTIRE document. Use only for sweeping redesigns where targeted edits don't make sense.
 
 RULES:
 - Keep it one self-contained HTML file: inline <style>/<script>, Google Fonts <link> allowed, no external JS/CSS files. Keep it responsive and accessible.
-- Preserve every <video> element and its playback wiring (including any scroll-scrub <script>) unless the user explicitly asks to change the video behaviour. The available clips are listed with the document — only ever use those URLs, and keep all of them on the page unless asked to remove one.
+- Preserve every <video> element and its playback wiring (including any scroll-scrub <script>) unless the user explicitly asks to change the video behaviour. The available clips are listed with the document; only ever use those URLs, and keep all of them on the page unless asked to remove one.
 - A scrubbing clip lives in its own .scrub-section wrapper with a .scrub-video inside; the scrub script drives every such pair, so adding a clip means adding the wrapper, not another copy of the script.
 - Never introduce generic AI aesthetics (no Inter/Roboto/Arial/system fonts, no purple-gradient-on-white cliché). Match the site's existing palette, type, and tone unless asked otherwise.
-- Write real, specific copy — never lorem ipsum or [placeholder].
+- Write real, specific copy, never lorem ipsum or [placeholder].
 - Narrate briefly as you work, and end with a 1–2 sentence summary of what changed. Never paste the full document back into the chat.`;
 
 const EDIT_TOOLS: Anthropic.Tool[] = [
@@ -204,7 +226,7 @@ const EDIT_TOOLS: Anthropic.Tool[] = [
       properties: {
         old_str: {
           type: "string",
-          description: "Exact text to find in the current document. Must be unique — include surrounding context if needed.",
+          description: "Exact text to find in the current document. Must be unique; include surrounding context if needed.",
         },
         new_str: { type: "string", description: "Replacement text." },
       },
@@ -363,7 +385,7 @@ export async function editSite(params: EditSiteParams): Promise<EditSiteResult> 
           results.push({
             type: "tool_result",
             tool_use_id: tu.id,
-            content: `old_str appears ${n} times — it must be unique. Include more surrounding context so it matches exactly one place.`,
+            content: `old_str appears ${n} times; it must be unique. Include more surrounding context so it matches exactly one place.`,
             is_error: true,
           });
         } else {
@@ -388,7 +410,7 @@ export async function editSite(params: EditSiteParams): Promise<EditSiteResult> 
     messages.push({ role: "user", content: results });
 
     if ((usage.output ?? 0) >= outputBudget) {
-      if (!summary) summary = "Reached the edit budget for this change — ask again to continue.";
+      if (!summary) summary = "Reached the edit budget for this change. Ask again to continue.";
       break;
     }
   }
@@ -405,7 +427,7 @@ export async function editSite(params: EditSiteParams): Promise<EditSiteResult> 
 const PLAN_CLIP_SYSTEM = `You are Reelform's director. The user is adding another video to their website by describing it in chat. Turn their request into one ready-to-shoot clip.
 
 - label: 3–5 words naming the slot on the page, e.g. "Roasting close-up" or "Workshop tour". Title case, no quotes.
-- prompt: ONE vivid shot description (1–2 sentences) a text-to-video model can render. Always name a concrete subject, a camera movement, the lighting, and the mood/colour grade. Keep it grounded in what the business actually is — no logos, no on-screen text, no people talking.
+- prompt: ONE vivid shot description (1–2 sentences) a text-to-video model can render. Always name a concrete subject, a camera movement, the lighting, and the mood/colour grade. Keep it grounded in what the business actually is, no logos, no on-screen text, no people talking.
 - mode: "scrub" if the shot is a reveal or a slow move that rewards the visitor scrolling through it frame by frame; "loop" if it is ambient texture that should just play on repeat.
 
 Match the look of the clips they already have so the site feels like one shoot, but never repeat a shot they already have. Honour whatever the user explicitly asks for.`;
@@ -449,7 +471,7 @@ export async function planClip(opts: {
     opts.siteBrief && `What the site is about: ${opts.siteBrief}`,
     opts.existing.length &&
       `Clips they already have:\n${opts.existing
-        .map((c, i) => `${i + 1}. ${c.label} [${c.mode}] — ${c.prompt}`)
+        .map((c, i) => `${i + 1}. ${c.label} [${c.mode}]: ${c.prompt}`)
         .join("\n")}`,
     `The user asks for: ${opts.request}`,
   ]
@@ -482,7 +504,7 @@ export async function planClip(opts: {
 const SHOT_SYSTEM = `You are a cinematographer writing a single hero-video prompt for a website's opening shot.
 Given a business, write ONE vivid shot description (1–2 sentences) that a text-to-video model can render.
 Always name: a concrete subject, a camera movement, the lighting, and the mood/color grade.
-Keep it grounded in what the business actually is — no logos, no on-screen text, no people talking.
+Keep it grounded in what the business actually is, no logos, no on-screen text, no people talking.
 Output ONLY the prompt text: no quotes, no label, no preamble, no markdown.`;
 
 // Turns the user's plain brief into a ready-to-use cinematography prompt.
@@ -497,7 +519,7 @@ export async function suggestShot(opts: {
     opts.name && `Business: ${opts.name}`,
     opts.industry && `Industry: ${opts.industry}`,
     opts.siteBrief && `What the site is about: ${opts.siteBrief}`,
-    opts.role && `This shot is for: ${opts.role} — write a shot that suits that slot specifically.`,
+    opts.role && `This shot is for: ${opts.role}. Write a shot that suits that slot specifically.`,
   ].filter(Boolean);
 
   const message = await client.messages.create({

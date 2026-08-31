@@ -5,7 +5,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 import { AVATAR_MAX_BYTES, AVATAR_TYPES } from "@/lib/avatar";
 
 // The member's profile picture. Uploads go through the service-role client
-// because the bucket is ours, not theirs — but only ever into a folder named
+// because the bucket is ours, not theirs, but only ever into a folder named
 // after the caller's own id, and only after their session has been verified.
 export const runtime = "nodejs";
 

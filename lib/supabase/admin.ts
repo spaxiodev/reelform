@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Service-role client — bypasses RLS. Server-only: used for credit
+// Service-role client, bypasses RLS. Server-only: used for credit
 // accounting (spend/grant RPCs) and Stripe webhook fulfillment.
 export function createSupabaseAdmin() {
   return createClient(

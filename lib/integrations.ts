@@ -22,7 +22,7 @@ export interface Integration {
   createdAt: string;
 }
 
-/** The connection facts safe to hand to the browser — never a token. */
+/** The connection facts safe to hand to the browser, never a token. */
 export interface IntegrationStatus {
   provider: Provider;
   connected: boolean;
@@ -93,7 +93,7 @@ export async function deleteIntegration(userId: string, provider: Provider): Pro
 /**
  * The user's connection for `provider`, with the access token refreshed if it
  * is at or near expiry. Returns null when they have not connected the
- * provider — or when a refresh failed, which means the grant was revoked and
+ * provider, or when a refresh failed, which means the grant was revoked and
  * the stale row is dropped so the UI prompts a reconnect.
  */
 export async function getIntegration(
@@ -113,7 +113,7 @@ export async function getIntegration(
   try {
     integration = fromRow(data as Row);
   } catch {
-    // Sealed with a different INTEGRATION_SECRET — unusable, so treat the
+    // Sealed with a different INTEGRATION_SECRET, unusable, so treat the
     // account as disconnected rather than failing every deploy from here on.
     return null;
   }

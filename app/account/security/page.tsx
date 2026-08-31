@@ -42,7 +42,7 @@ export default async function SecurityPage() {
                     hour: "2-digit",
                     minute: "2-digit",
                   })
-                : "—"}
+                : "-"}
             </dd>
           </div>
         </dl>
