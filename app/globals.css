@@ -15,6 +15,7 @@
   --primary-soft: #ffd8c6; /* warm peach — soft chips */
   --coral: #ff6a3d; /* bloom-coral — record dot / sale accents */
   --danger: #b3262b; /* bloom-deep — errors */
+  --live: #1f8f4e; /* muted forest — provider up; the only green in the system */
   --line: #efe6df; /* warm hairline */
   --line-strong: #d3c4ba; /* warm steel */
   /* Softer, layered lift — reads as polished rather than a hard drop shadow */
@@ -35,6 +36,7 @@
   --color-primary-soft: var(--primary-soft);
   --color-coral: var(--coral);
   --color-danger: var(--danger);
+  --color-live: var(--live);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --font-display: var(--font-manrope);
@@ -173,6 +175,52 @@ h3 {
 }
 .field::placeholder {
   color: var(--faint);
+}
+
+/* Shot-length slider. Native range styling is unusable across browsers, so the
+   track and thumb are drawn by hand in the site's own palette. */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-shadow: var(--shadow-btn);
+}
+.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: var(--shadow-btn);
+}
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(221, 79, 38, 0.3);
+}
+.range:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 /* Hairline section divider (replaces the old film-strip motif) */
@@ -333,5 +381,105 @@ h3 {
 @media (max-width: 767px) {
   .chevron-slash {
     display: none;
+  }
+}
+
+/* Loading placeholder — a slow warm sweep rather than a grey pulse, so it
+   sits inside the palette instead of fighting it. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-raise) 25%,
+    color-mix(in srgb, var(--line) 70%, var(--bg-raise)) 37%,
+    var(--bg-raise) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    background-position: -135% 0;
+  }
+}
+
+/* ── Accessibility ───────────────────────────────────────────────── */
+
+/* Off-screen until focused, then pinned over the nav. Every page's <main>
+   carries id="main" so this always lands somewhere real. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100%;
+  z-index: 100;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lift);
+  transition: top 0.18s ease;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Visible only to screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* A single, consistent keyboard focus ring. Scoped to :focus-visible so it
+   never fires on mouse clicks — the reason the app previously relied on
+   outline:none in places. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible,
+.field:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+/* Vestibular safety net: anything decorative and looping stops, and the
+   scroll-driven transforms collapse to their end state. The scroll-scrub
+   preview keeps working — seeking is the content, not an effect — but its
+   ambient companions go still. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal,
+  .reveal-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .rec-dot,
+  .scroll-cue span,
+  .ticker,
+  .stream-bar {
+    animation: none !important;
+  }
+  .btn-primary:hover {
+    transform: none;
   }
 }

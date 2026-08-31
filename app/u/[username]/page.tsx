@@ -1,13 +1,23 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { pageMeta } from "@/lib/seo";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FollowButton } from "@/components/FollowButton";
 import { ShowcaseGrid, type ShowcaseSite } from "@/components/ShowcaseGrid";
 
-export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
   const { username } = await params;
-  return { title: `@${username} — Reelform` };
+  return pageMeta({
+    title: `@${username}`,
+    description: `Video-first websites directed and published by @${username} on Reelform.`,
+    path: `/u/${username}`,
+  });
 }
 
 export default async function ProfilePage({
@@ -69,7 +79,7 @@ export default async function ProfilePage({
     <div className="flex flex-col min-h-screen">
       <SiteHeader />
 
-      <main className="flex-1 px-6 md:px-10 py-16 max-w-6xl mx-auto w-full">
+      <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-6xl mx-auto w-full">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <p className="mono-label">

@@ -69,25 +69,67 @@ export function estimateEditCredits(
   return { hold, outputBudget };
 }
 
-export type Resolution = "720p" | "1080p";
-export type Duration = 5 | 10;
+import type { Resolution, VideoModelId } from "@/lib/higgsfield";
 
-export const VIDEO_COST: Record<Resolution, Record<Duration, number>> = {
-  "720p": { 5: 45, 10: 90 },
-  "1080p": { 5: 90, 10: 180 },
+export type { Resolution };
+export type Duration = number;
+
+// Video shoots run on Higgsfield, which does not publish per-request API
+// prices. These are the provider's cost per second of finished video at 720p,
+// taken from the closest published rates for the same models on comparable
+// marketplaces, and they drive every credit price the studio quotes.
+//
+// ⚠ ASSUMPTION: Higgsfield's own rates may differ in either direction. Check
+// the first real invoice and re-tune here — at the 2× margin this file targets,
+// an error either way lands straight on gross margin. The spread across the
+// catalog is ~10×, so a per-model table is the only honest way to quote a cost.
+export const VIDEO_MODEL_USD_PER_SECOND: Record<VideoModelId, number> = {
+  "seedance-lite": 0.036,
+  "ltx-2": 0.04,
+  "hailuo-02": 0.045,
+  "hailuo-2.3": 0.05,
+  "seedance-pro-fast": 0.06,
+  "kling-2.5-turbo-pro": 0.07,
+  "hailuo-02-pro": 0.08,
+  "hailuo-2.3-pro": 0.09,
+  "wan-2.5": 0.1,
+  "sora-2": 0.1,
+  "kling-2.1-master": 0.28,
+  "sora-2-pro": 0.3,
 };
 
-export function videoCost(resolution: Resolution, duration: Duration): number {
-  return VIDEO_COST[resolution][duration];
+// Resolution scales the per-second rate. Models without a resolution control
+// shoot at their own native size and are billed at the 720p rate.
+const RESOLUTION_MULTIPLIER: Record<Resolution, number> = {
+  "480p": 0.6,
+  "720p": 1,
+  "1080p": 1.5,
+};
+
+/**
+ * What one shot costs, in credits. Rounded up to a whole credit and to a
+ * minimum of one, so a cheap model at 480p can never be free.
+ */
+export function videoCost(
+  model: VideoModelId,
+  resolution: Resolution,
+  duration: Duration
+): number {
+  const usd = VIDEO_MODEL_USD_PER_SECOND[model] * RESOLUTION_MULTIPLIER[resolution] * duration;
+  return Math.max(1, Math.ceil((usd * CREDIT_MARGIN) / CREDIT_USD));
 }
 
+export type PlanId = "free" | "starter" | "pro" | "studio";
+
 export interface Plan {
-  id: "starter" | "pro" | "studio";
+  id: Exclude<PlanId, "free">;
   name: string;
   priceUsd: number;
   creditsPerMonth: number;
   priceEnv: string; // env var holding the Stripe price id
   tagline: string;
+  /** Headline capabilities beyond credits, shown on the rate card. */
+  perks: string[];
 }
 
 export const PLANS: Plan[] = [
@@ -97,7 +139,8 @@ export const PLANS: Plan[] = [
     priceUsd: 19,
     creditsPerMonth: 2000,
     priceEnv: "STRIPE_PRICE_STARTER",
-    tagline: "~15 videos or a full site refresh every week",
+    tagline: "~13 hero shots or a full site refresh every week",
+    perks: ["Unlimited zip exports", "Public showcase"],
   },
   {
     id: "pro",
@@ -106,6 +149,7 @@ export const PLANS: Plan[] = [
     creditsPerMonth: 6000,
     priceEnv: "STRIPE_PRICE_PRO",
     tagline: "For freelancers shipping client sites",
+    perks: ["One-click deploy to your Vercel", "Supabase backend for forms", "3 live sites"],
   },
   {
     id: "studio",
@@ -114,6 +158,7 @@ export const PLANS: Plan[] = [
     creditsPerMonth: 18000,
     priceEnv: "STRIPE_PRICE_STUDIO",
     tagline: "Agency volume, best credit rate",
+    perks: ["Everything in Pro", "25 live sites", "Deploy for every client"],
   },
 ];
 
@@ -133,4 +178,52 @@ export const TOPUPS: Topup[] = [
   { id: "large", name: "6,200 credits", priceUsd: 60, credits: 6200, priceEnv: "STRIPE_PRICE_TOPUP_LARGE" },
 ];
 
-export const SIGNUP_BONUS = 150;
+// New accounts get one complete website free — one hero video and one site
+// build — instead of a credit float. See lib/entitlements.ts for the rule; the
+// flags live on `profiles`, so the free tier can't be topped up.
+export const FREE_BUILD = { videos: 1, siteBuilds: 1 } as const;
+
+// ── Deployment (push a finished site to the user's own infrastructure) ────
+// Deploys run against the *customer's* Vercel and Supabase accounts, so they
+// cost us nothing at a provider — the gate is a plan feature, not a credit
+// price. The cap is on how many distinct sites may be live at once, which is
+// what separates a freelancer from an agency.
+
+export const DEPLOY_SITE_LIMIT: Record<PlanId, number> = {
+  free: 0,
+  starter: 0,
+  pro: 3,
+  studio: 25,
+};
+
+export function planId(plan: string | null | undefined): PlanId {
+  return plan === "starter" || plan === "pro" || plan === "studio" ? plan : "free";
+}
+
+/** Whether a plan may push sites to Vercel / Supabase at all. */
+export function canDeploy(plan: string | null | undefined): boolean {
+  return DEPLOY_SITE_LIMIT[planId(plan)] > 0;
+}
+
+/** How many projects a plan may keep live simultaneously. */
+export function deploySiteLimit(plan: string | null | undefined): number {
+  return DEPLOY_SITE_LIMIT[planId(plan)];
+}
+
+/**
+ * How full an account's credit tank is, for the ring drawn around the avatar.
+ * A plan's monthly grant is the natural full mark; free accounts have no grant,
+ * so the smallest top-up stands in as the scale — it keeps the ring meaningful
+ * for someone who has only ever bought credits, and it can only ever read as
+ * "some" rather than a promise about the plan.
+ */
+export function creditRing(
+  plan: string | null | undefined,
+  credits: number
+): { fraction: number; allowance: number } {
+  const allowance = PLANS.find((p) => p.id === planId(plan))?.creditsPerMonth ?? TOPUPS[0].credits;
+  return { fraction: Math.max(0, Math.min(1, credits / allowance)), allowance };
+}
+
+/** The cheapest plan that unlocks deploys — named in upgrade prompts. */
+export const DEPLOY_MIN_PLAN = PLANS.find((p) => DEPLOY_SITE_LIMIT[p.id] > 0)!;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { PortalButton } from "@/components/CheckoutButton";
@@ -6,9 +7,10 @@ import { PLANS } from "@/lib/pricing";
 import { getBillingHistory, formatMoney } from "@/lib/billing";
 import { ledgerLabel } from "@/lib/ledger";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { FollowRequests } from "@/components/FollowRequests";
 
-export const metadata = { title: "Account — Reelform" };
+export const metadata = { title: "Account", ...PRIVATE_PAGE };
 
 export default async function AccountOverviewPage() {
   const supabase = await createSupabaseServer();
@@ -20,7 +22,9 @@ export default async function AccountOverviewPage() {
   const [{ data: profile }, { data: recent }, { count: projectCount }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("email, username, full_name, is_private, credits, plan, plan_status, stripe_customer_id, created_at")
+      .select(
+        "email, username, full_name, is_private, avatar_url, credits, plan, plan_status, stripe_customer_id, created_at"
+      )
       .eq("id", user.id)
       .single(),
     supabase
@@ -88,6 +92,16 @@ export default async function AccountOverviewPage() {
           Your name and username appear on everything you publish to the showcase.
         </p>
         <div className="mt-5">
+          <AvatarPicker
+            userId={user.id}
+            name={profile?.full_name ?? profile?.username ?? null}
+            email={profile?.email ?? user.email ?? null}
+            credits={profile?.credits ?? 0}
+            plan={profile?.plan ?? null}
+            initialAvatarUrl={profile?.avatar_url ?? null}
+          />
+        </div>
+        <div className="mt-6 border-t border-line pt-6">
           <ProfileSettings
             userId={user.id}
             initialUsername={profile?.username ?? null}

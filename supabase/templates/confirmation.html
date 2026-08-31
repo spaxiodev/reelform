@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Confirm your Reelform account</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#faf5f1;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; height:0; width:0;">
+      One tap and your Reelform account is live.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#faf5f1;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; width:100%;">
+
+            <!-- Card -->
+            <tr>
+              <td style="background-color:#ffffff; border:1px solid #efe6df; border-radius:20px; overflow:hidden;">
+
+                <!-- Wordmark band -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="background-color:#2a1a13; padding:20px 32px;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="padding-right:10px; line-height:0;">
+                            <div style="width:9px; height:9px; border-radius:50%; background-color:#ff6a3d; font-size:0; line-height:0;">&nbsp;</div>
+                          </td>
+                          <td style="font-family:'Manrope',Helvetica,Arial,sans-serif; font-size:18px; font-weight:600; letter-spacing:-0.2px; color:#ffffff;">
+                            Reel<span style="color:#ffd8c6;">form</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Body -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="padding:36px 32px 32px 32px; font-family:'Manrope',Helvetica,Arial,sans-serif;">
+
+                      <p style="margin:0 0 14px 0; font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#766159;">
+                        Confirm your email
+                      </p>
+
+                      <h1 style="margin:0 0 16px 0; font-size:28px; font-weight:600; line-height:1.15; color:#2a1a13;">
+                        You&rsquo;re one tap from your first shot.
+                      </h1>
+
+                      <p style="margin:0 0 28px 0; font-size:15px; line-height:1.55; color:#4b3a33;">
+                        Confirm this address to activate your Reelform account. Then you can direct the
+                        shot with Seedance and let Claude build the site around it.
+                      </p>
+
+                      <!-- CTA -->
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="background-color:#dd4f26; border-radius:10px;">
+                            <a href="{{ .ConfirmationURL }}"
+                               style="display:inline-block; padding:14px 28px; font-family:'Manrope',Helvetica,Arial,sans-serif; font-size:13px; font-weight:600; letter-spacing:0.7px; text-transform:uppercase; color:#ffffff; text-decoration:none;">
+                              Confirm my email
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin:28px 0 6px 0; font-size:12px; line-height:1.5; color:#766159;">
+                        Button not working? Paste this link into your browser:
+                      </p>
+                      <p style="margin:0; font-size:12px; line-height:1.5; word-break:break-all;">
+                        <a href="{{ .ConfirmationURL }}" style="color:#b23a17; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                      </p>
+
+                      <div style="height:1px; background-color:#efe6df; font-size:0; line-height:0; margin:28px 0;">&nbsp;</div>
+
+                      <p style="margin:0; font-size:12px; line-height:1.5; color:#766159;">
+                        This link expires in 24 hours. If you didn&rsquo;t create a Reelform account, you can
+                        safely ignore this email &mdash; nothing was activated.
+                      </p>
+
+                    </td>
+                  </tr>
+                </table>
+
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding:24px 32px 8px 32px; font-family:'Manrope',Helvetica,Arial,sans-serif; text-align:center;">
+                <p style="margin:0 0 8px 0; font-size:12px; line-height:1.5; color:#766159;">
+                  Reelform &mdash; AI video-first websites.
+                </p>
+                <p style="margin:0; font-size:12px; line-height:1.5; color:#766159;">
+                  <a href="{{ .SiteURL }}/faq" style="color:#b23a17; text-decoration:none;">FAQ</a>
+                  &nbsp;&middot;&nbsp;
+                  <a href="{{ .SiteURL }}/contact" style="color:#b23a17; text-decoration:none;">Contact</a>
+                  &nbsp;&middot;&nbsp;
+                  <a href="{{ .SiteURL }}/privacy" style="color:#b23a17; text-decoration:none;">Privacy</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

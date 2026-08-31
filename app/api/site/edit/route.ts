@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { spendCredits, grantCredits } from "@/lib/credits";
 import { isAdminUser } from "@/lib/admin";
+import { authorizeSiteBuild } from "@/lib/entitlements";
 import { editSite } from "@/lib/claude";
 import { MODELS, meteredCredits, estimateEditCredits, EDIT_MIN_CREDITS, type ModelId } from "@/lib/pricing";
+import { listVideos, readyVideos } from "@/lib/videos";
 
 // Agentic, Claude-Code-style edits. Streams newline-delimited JSON events:
 //   {"type":"text","text":"..."}      — Claude's narration, token by token
@@ -29,6 +32,10 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  // Bounds provider spend per account — credits cap total spend, not rate.
+  const limited = await enforceRateLimit(user.id, "site_edit");
+  if (limited) return limited;
+
   const body = (await request.json()) as Body;
   const model = MODELS[body.model] ? body.model : null;
   if (!model) return NextResponse.json({ error: "Unknown model" }, { status: 400 });
@@ -38,19 +45,42 @@ export async function POST(request: NextRequest) {
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, site_html, video_url, video_mode")
+    .select("id, site_html")
     .eq("id", body.projectId)
     .single();
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
   if (!project.site_html) {
     return NextResponse.json({ error: "Build the site before editing it" }, { status: 400 });
   }
-  if (!project.video_url) {
-    return NextResponse.json({ error: "This project has no hero video" }, { status: 400 });
+
+  const videos = readyVideos(await listVideos(supabase, project.id));
+  if (videos.length === 0) {
+    return NextResponse.json({ error: "This project has no video yet" }, { status: 400 });
   }
+
+  // Prior turns of the site chat, so follow-ups resolve against what was just
+  // discussed. Shot messages are a different thread — skip them.
+  const { data: priorMessages } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("project_id", project.id)
+    .eq("target", "claude")
+    .order("created_at", { ascending: true })
+    .limit(40);
+  const history = (priorMessages ?? []).map((m) => ({
+    role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+    content: m.content,
+  }));
 
   const instruction = body.instruction.trim();
   const isAdmin = isAdminUser(user.id);
+  // Editing a finished site is a subscriber feature — the free build is one shot.
+  if (!isAdmin) {
+    const grant = await authorizeSiteBuild(supabase, user.id, "edit");
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
+    }
+  }
   const { hold, outputBudget } = estimateEditCredits(model, project.site_html.length);
 
   // Reserve the hold up front so we never run unpaid work.
@@ -78,8 +108,8 @@ export async function POST(request: NextRequest) {
           model,
           currentHtml: project.site_html!,
           instruction,
-          videoUrl: project.video_url!,
-          videoMode: project.video_mode === "scrub" ? "scrub" : "loop",
+          videos,
+          history,
           outputBudget,
           onText: (delta) => send(controller, { type: "text", text: delta }),
           onStep: (label) => send(controller, { type: "step", label }),

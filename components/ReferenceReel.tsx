@@ -34,12 +34,20 @@ export function ReferenceReel({
     if (!strip) return;
     const videos = Array.from(strip.querySelectorAll<HTMLVideoElement>("video[data-src]"));
 
+    // Autoplaying loops are unrequested motion; under prefers-reduced-motion
+    // the clips still load and show a frame, they just never play.
+    const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const video = entry.target as HTMLVideoElement;
           if (entry.isIntersecting) {
             if (!video.src) video.src = video.dataset.src!;
+            if (stillOnly) {
+              video.pause();
+              continue;
+            }
             video.play().catch(() => {});
           } else {
             video.pause();
@@ -116,7 +124,7 @@ export function ReferenceReel({
       </div>
 
       <p className="mt-6 px-6 md:px-10 max-w-6xl mx-auto text-xs text-white/40">
-        Clips stream in as you scroll — nothing loads until it's on screen.
+        Clips stream in as you scroll — nothing loads until it&apos;s on screen.
       </p>
     </section>
   );

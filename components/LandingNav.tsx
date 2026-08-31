@@ -38,16 +38,16 @@ export async function LandingNav() {
             Pricing
           </Link>
           {user ? (
-            <Link href="/dashboard" className={ctaCls}>
-              Open studio
+            <Link href="/create" className={ctaCls}>
+              Start building
             </Link>
           ) : (
             <>
               <Link href="/login" className={linkCls}>
                 Log in
               </Link>
-              <Link href="/login?mode=signup" className={ctaCls}>
-                Get started
+              <Link href="/create" className={ctaCls}>
+                Start building
               </Link>
             </>
           )}

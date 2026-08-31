@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { LEDGER_REASONS, ledgerLabel } from "@/lib/ledger";
 
-export const metadata = { title: "Credits & activity — Reelform" };
+export const metadata = { title: "Credits & activity", ...PRIVATE_PAGE };
 
 const PAGE_SIZE = 50;
 

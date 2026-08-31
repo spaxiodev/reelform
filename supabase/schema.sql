@@ -29,6 +29,18 @@ alter table public.profiles add column if not exists stripe_customer_id text;
 alter table public.profiles add column if not exists stripe_subscription_id text;
 alter table public.profiles add column if not exists created_at timestamptz not null default now();
 
+-- Every account gets one complete website free: one hero video and one site
+-- build. Both are one-shot flags rather than a credit balance, so the free tier
+-- can't be topped up — regenerating or editing needs a subscription.
+alter table public.profiles add column if not exists free_video_used boolean not null default false;
+alter table public.profiles add column if not exists free_site_used boolean not null default false;
+
+-- Profile picture. Null means "no picture chosen" — the UI draws initials on a
+-- colour derived from the account id, so every member has a face without
+-- anyone having to upload one. Uploads land in the public `avatars` bucket
+-- (created on first upload by /api/account/avatar).
+alter table public.profiles add column if not exists avatar_url text;
+
 do $$
 begin
   alter table public.profiles add constraint profiles_username_format
@@ -42,7 +54,7 @@ create unique index if not exists profiles_username_key
 -- Public-safe slice of profiles (no email, credits or Stripe ids). The view
 -- runs as its owner, so it bypasses profiles RLS by design.
 create or replace view public.public_profiles as
-  select id, username, full_name, is_private, created_at
+  select id, username, full_name, is_private, created_at, avatar_url
     from public.profiles;
 
 grant select on public.public_profiles to anon, authenticated;
@@ -141,18 +153,43 @@ create index if not exists projects_user_idx on public.projects (user_id, update
 create index if not exists projects_published_idx on public.projects (published_at desc)
   where published;
 
--- ── Chat messages (per project, for both Claude and Seedance threads) ─
+-- ── Project videos (a production can feature several clips) ──────────
+-- The projects.video_* columns above remain as a mirror of the first clip so
+-- the export and showcase paths that read a single hero video keep working.
+create table if not exists public.project_videos (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  position integer not null default 0,         -- order on the page, 0 = hero
+  label text not null default 'Hero video',    -- how the site should use it
+  prompt text,
+  mode text not null default 'loop',           -- loop | scrub (per clip)
+  status text not null default 'none',         -- none | queued | running | succeeded | failed
+  task_id text,
+  url text,
+  settings jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists project_videos_project_idx
+  on public.project_videos (project_id, position);
+
+-- ── Chat messages (per project, for both the Claude and shot threads) ─
 create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
   role text not null,                          -- user | assistant
-  target text not null default 'claude',       -- claude | seedance
+  target text not null default 'claude',       -- claude | video
   content text not null,
   created_at timestamptz not null default now()
 );
 
 alter table public.messages add column if not exists target text not null default 'claude';
+
+-- The shot thread used to be named after the video model rather than the step.
+update public.messages set target = 'video' where target = 'seedance';
 
 create index if not exists messages_project_idx on public.messages (project_id, created_at);
 
@@ -171,6 +208,7 @@ create index if not exists ledger_user_idx on public.credit_ledger (user_id, cre
 -- ── Row Level Security ───────────────────────────────────────────────
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
+alter table public.project_videos enable row level security;
 alter table public.messages enable row level security;
 alter table public.credit_ledger enable row level security;
 alter table public.follows enable row level security;
@@ -182,7 +220,7 @@ create policy "read own profile" on public.profiles
 -- Members can edit their own public identity — and nothing else. Column-level
 -- grants keep credits/plan/Stripe fields out of reach even for the row owner.
 revoke update on public.profiles from anon, authenticated;
-grant update (username, full_name, is_private) on public.profiles to authenticated;
+grant update (username, full_name, is_private, avatar_url) on public.profiles to authenticated;
 
 drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile" on public.profiles
@@ -224,6 +262,23 @@ drop policy if exists "read published projects" on public.projects;
 create policy "read published projects" on public.projects
   for select using (published = true and public.can_view_profile(user_id));
 
+drop policy if exists "crud own project videos" on public.project_videos;
+create policy "crud own project videos" on public.project_videos
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Clips of a published project are readable by anyone who may see the project
+-- itself, so the public showcase can render every video on the page.
+drop policy if exists "read published project videos" on public.project_videos;
+create policy "read published project videos" on public.project_videos
+  for select using (
+    exists (
+      select 1 from public.projects p
+       where p.id = project_id
+         and p.published = true
+         and public.can_view_profile(p.user_id)
+    )
+  );
+
 drop policy if exists "crud own messages" on public.messages;
 create policy "crud own messages" on public.messages
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -256,9 +311,10 @@ begin
     v_username := substr(v_username, 1, 19) || '_' || substr(replace(new.id::text, '-', ''), 1, 4);
   end if;
 
+  -- No signup credits: new accounts get one free build (see the free_*_used
+  -- flags above) and buy a subscription from there.
   insert into public.profiles (id, email, username, full_name, credits)
-  values (new.id, new.email, v_username, v_full_name, 150);
-  insert into public.credit_ledger (user_id, delta, reason) values (new.id, 150, 'signup_bonus');
+  values (new.id, new.email, v_username, v_full_name, 0);
   return new;
 end;
 $$;
@@ -289,6 +345,48 @@ begin
 end;
 $$;
 
+-- ── Free-build allowance ─────────────────────────────────────────────
+-- Claiming flips a flag false → true and reports whether *this* call was the
+-- one that flipped it. Two concurrent requests therefore can't both spend the
+-- same free build: the loser's UPDATE matches zero rows. Same shape as
+-- spend_credits, for the same reason.
+create or replace function public.claim_free_allowance(p_user uuid, p_kind text)
+returns boolean
+language plpgsql
+security definer set search_path = public
+as $$
+declare updated integer;
+begin
+  if p_kind = 'video' then
+    update public.profiles set free_video_used = true
+     where id = p_user and free_video_used = false;
+  elsif p_kind = 'site' then
+    update public.profiles set free_site_used = true
+     where id = p_user and free_site_used = false;
+  else
+    raise exception 'unknown allowance kind: %', p_kind;
+  end if;
+  get diagnostics updated = row_count;
+  return updated = 1;
+end;
+$$;
+
+-- Hands the allowance back when the generation never happened — the mirror of
+-- refunding credits on a failed render.
+create or replace function public.release_free_allowance(p_user uuid, p_kind text)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if p_kind = 'video' then
+    update public.profiles set free_video_used = false where id = p_user;
+  elsif p_kind = 'site' then
+    update public.profiles set free_site_used = false where id = p_user;
+  end if;
+end;
+$$;
+
 -- ── Grant credits (top-ups, subscription renewals, refunds) ──────────
 create or replace function public.grant_credits(p_user uuid, p_amount integer, p_reason text, p_ref text default null)
 returns void
@@ -305,3 +403,124 @@ $$;
 -- Only the service role may call the credit functions.
 revoke execute on function public.spend_credits(uuid, integer, text, text) from public, anon, authenticated;
 revoke execute on function public.grant_credits(uuid, integer, text, text) from public, anon, authenticated;
+
+-- ── Rate limiting ────────────────────────────────────────────────────
+-- Bounds how fast one account can hit the endpoints that cost us money at a
+-- provider. Credits cap total spend but not rate, and admin ids bypass credits
+-- entirely. Kept in Postgres rather than process memory because the app runs
+-- as serverless functions (an in-memory counter would be per-instance and
+-- would reset on every cold start).
+create table if not exists public.rate_limits (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  bucket text not null,
+  window_start timestamptz not null default now(),
+  count integer not null default 0,
+  primary key (user_id, bucket)
+);
+
+-- RLS on with no policies: reachable only via the function below or the
+-- service role.
+alter table public.rate_limits enable row level security;
+
+-- Fixed-window counter. The whole read-modify-write is one statement, so two
+-- concurrent requests cannot both slip past the limit.
+create or replace function public.consume_rate_limit(
+  p_user uuid,
+  p_bucket text,
+  p_limit integer,
+  p_window_seconds integer
+) returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_now timestamptz := now();
+  v_start timestamptz;
+  v_count integer;
+begin
+  insert into public.rate_limits as rl (user_id, bucket, window_start, count)
+  values (p_user, p_bucket, v_now, 1)
+  on conflict (user_id, bucket) do update
+    set window_start = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+            then v_now else rl.window_start end,
+        count = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+            then 1 else rl.count + 1 end
+  returning rl.window_start, rl.count into v_start, v_count;
+
+  return jsonb_build_object(
+    'allowed', v_count <= p_limit,
+    'remaining', greatest(p_limit - v_count, 0),
+    'reset_at', v_start + make_interval(secs => p_window_seconds)
+  );
+end;
+$$;
+
+revoke execute on function public.consume_rate_limit(uuid, text, integer, integer) from public, anon, authenticated;
+
+-- ── Deploying a site to the user's own Vercel / Supabase accounts ────
+
+-- ── Connected third-party accounts ───────────────────────────────────
+-- Tokens are sealed with INTEGRATION_SECRET before they reach this table
+-- (see lib/crypto.ts). RLS is enabled with *no policies on purpose*: nothing
+-- but the service-role client may read a row, so a token can never be pulled
+-- through the browser client the way a project row can.
+create table if not exists public.integrations (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  provider text not null check (provider in ('vercel', 'supabase')),
+  access_token text not null,                  -- encrypted
+  refresh_token text,                          -- encrypted
+  expires_at timestamptz,                      -- null = does not expire (Vercel)
+  account_id text,                             -- Vercel team id, when installed on a team
+  account_name text,                           -- display label for the UI
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, provider)
+);
+
+alter table public.integrations enable row level security;
+
+revoke all on public.integrations from anon, authenticated;
+
+-- ── Deployment history ───────────────────────────────────────────────
+create table if not exists public.deployments (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  provider text not null check (provider in ('vercel', 'supabase')),
+  -- vercel: hosting. supabase: backend, storage, or both.
+  target text not null default 'hosting',
+  status text not null default 'queued',       -- queued | building | ready | error
+  url text,                                    -- the live site, once it is up
+  external_id text,                            -- Vercel deployment id
+  error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists deployments_project_idx
+  on public.deployments (project_id, created_at desc);
+create index if not exists deployments_user_idx
+  on public.deployments (user_id, created_at desc);
+
+alter table public.deployments enable row level security;
+
+-- Read-only for the owner: rows are written by the deploy route with the
+-- service-role client, which already knows the user is entitled to deploy.
+drop policy if exists "deployments_select_own" on public.deployments;
+create policy "deployments_select_own" on public.deployments
+  for select using (user_id = auth.uid());
+
+-- ── Where a project currently lives ──────────────────────────────────
+-- Kept on the project so a re-deploy lands on the same Vercel project and
+-- writes into the same Supabase project instead of creating a new one, and so
+-- the live-site cap can be counted per plan.
+alter table public.projects add column if not exists vercel_project_id text;
+alter table public.projects add column if not exists vercel_url text;
+alter table public.projects add column if not exists supabase_project_ref text;
+alter table public.projects add column if not exists supabase_url text;
+alter table public.projects add column if not exists live_at timestamptz;
+
+create index if not exists projects_live_idx on public.projects (user_id)
+  where live_at is not null;

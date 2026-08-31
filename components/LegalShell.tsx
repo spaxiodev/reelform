@@ -32,7 +32,7 @@ export function LegalShell({
         </nav>
       </header>
 
-      <main className="flex-1 px-6 md:px-10 py-16 max-w-3xl mx-auto w-full">
+      <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-3xl mx-auto w-full">
         <p className="mono-label">{label}</p>
         <h1 className="mt-3 text-4xl md:text-5xl font-medium tracking-tight">{title}</h1>
         {updated && <p className="mt-3 text-sm text-faint">Last updated: {updated}</p>}

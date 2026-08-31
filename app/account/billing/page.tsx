@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { PortalButton } from "@/components/CheckoutButton";
 import { PLANS } from "@/lib/pricing";
 import { getBillingHistory, formatMoney } from "@/lib/billing";
 
-export const metadata = { title: "Billing & invoices — Reelform" };
+export const metadata = { title: "Billing & invoices", ...PRIVATE_PAGE };
 
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-primary-soft text-primary-deep",

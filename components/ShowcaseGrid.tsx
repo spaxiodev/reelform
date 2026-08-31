@@ -21,12 +21,20 @@ export function ShowcaseGrid({ sites }: { sites: ShowcaseSite[] }) {
     if (!grid) return;
     const videos = Array.from(grid.querySelectorAll<HTMLVideoElement>("video[data-src]"));
 
+    // Autoplaying loops are unrequested motion; under prefers-reduced-motion
+    // the clips still load and show a frame, they just never play.
+    const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const video = entry.target as HTMLVideoElement;
           if (entry.isIntersecting) {
             if (!video.src) video.src = video.dataset.src!;
+            if (stillOnly) {
+              video.pause();
+              continue;
+            }
             video.play().catch(() => {});
           } else {
             video.pause();

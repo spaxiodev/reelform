@@ -1,17 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { spendCredits, grantCredits } from "@/lib/credits";
 import { isAdminUser } from "@/lib/admin";
-import { createVideoTask } from "@/lib/seedance";
-import { videoCost, type Resolution, type Duration } from "@/lib/pricing";
+import {
+  createVideoTask,
+  isVideoModel,
+  resolveShot,
+  DEFAULT_VIDEO_MODEL,
+  type VideoModelId,
+  type Resolution,
+  type Ratio,
+} from "@/lib/higgsfield";
+import { videoCost } from "@/lib/pricing";
+import { syncPrimaryVideo } from "@/lib/videos";
+import { authorizeVideo, releaseFree } from "@/lib/entitlements";
 
 interface Body {
-  projectId: string;
+  videoId: string; // the clip slot being shot
   prompt: string;
   resolution: Resolution;
-  duration: Duration;
-  ratio: "16:9" | "9:16" | "1:1" | "21:9";
+  duration: number;
+  ratio: Ratio;
+  model?: VideoModelId; // which hosted video model shoots it
 }
 
 export async function POST(request: NextRequest) {
@@ -21,28 +33,52 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  // Bounds provider spend per account — credits cap total spend, not rate.
+  const limited = await enforceRateLimit(user.id, "video_generate");
+  if (limited) return limited;
+
   const body = (await request.json()) as Body;
-  if (!body.projectId || !body.prompt?.trim()) {
-    return NextResponse.json({ error: "Missing project or prompt" }, { status: 400 });
+  if (!body.videoId || !body.prompt?.trim()) {
+    return NextResponse.json({ error: "Missing video or prompt" }, { status: 400 });
   }
-  const resolution: Resolution = body.resolution === "1080p" ? "1080p" : "720p";
-  const duration: Duration = body.duration === 10 ? 10 : 5;
-  const ratio = ["16:9", "9:16", "1:1", "21:9"].includes(body.ratio) ? body.ratio : "16:9";
+  // Unknown ids fall through to the server default rather than erroring — the
+  // picker is a preference, not something a stale client should break on.
+  const videoModel: VideoModelId = isVideoModel(body.model) ? body.model : DEFAULT_VIDEO_MODEL;
+  // Snap the request onto what this model can really shoot, and price *that* —
+  // charging for 1080p on a model with no resolution control would be a lie.
+  const shot = resolveShot(videoModel, {
+    resolution: ["480p", "720p", "1080p"].includes(body.resolution) ? body.resolution : "720p",
+    duration: Number.isFinite(body.duration) ? body.duration : 5,
+    ratio: (["16:9", "9:16", "1:1", "21:9"] as const).includes(body.ratio) ? body.ratio : "16:9",
+  });
+  const resolution: Resolution = shot.resolution ?? "720p";
+  const duration = shot.duration;
+  const ratio: Ratio = shot.ratio ?? "16:9";
 
   // Ownership check (RLS also enforces this).
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("id", body.projectId)
+  const { data: video } = await supabase
+    .from("project_videos")
+    .select("id, project_id, position")
+    .eq("id", body.videoId)
     .single();
-  if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
+  // Free accounts get one hero video; after that it's credits on a plan.
   const isAdmin = isAdminUser(user.id);
-  const cost = isAdmin ? 0 : videoCost(resolution, duration);
+  let freeShot = false;
+  let cost = 0;
   if (!isAdmin) {
-    const ok = await spendCredits(user.id, cost, "video_generation", body.projectId);
-    if (!ok) {
-      return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+    const grant = await authorizeVideo(supabase, user.id);
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
+    }
+    freeShot = grant.billing === "free";
+    if (!freeShot) {
+      cost = videoCost(videoModel, resolution, duration);
+      const ok = await spendCredits(user.id, cost, "video_generation", video.project_id);
+      if (!ok) {
+        return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+      }
     }
   }
 
@@ -51,34 +87,38 @@ export async function POST(request: NextRequest) {
       prompt: body.prompt.trim(),
       resolution,
       duration,
-      ratio: ratio as Body["ratio"],
+      ratio,
+      model: videoModel,
     });
 
     const admin = createSupabaseAdmin();
     await admin
-      .from("projects")
+      .from("project_videos")
       .update({
-        video_brief: body.prompt.trim(),
-        video_task_id: taskId,
-        video_status: "queued",
-        video_url: null,
-        video_settings: { resolution, duration, ratio, cost },
+        prompt: body.prompt.trim(),
+        task_id: taskId,
+        status: "queued",
+        url: null,
+        settings: { resolution, duration, ratio, cost, free: freeShot, model: videoModel },
         updated_at: new Date().toISOString(),
       })
-      .eq("id", body.projectId);
+      .eq("id", video.id);
+
+    if (video.position === 0) await syncPrimaryVideo(admin, video.project_id);
 
     await admin.from("messages").insert({
-      project_id: body.projectId,
+      project_id: video.project_id,
       user_id: user.id,
       role: "user",
-      target: "seedance",
+      target: "video",
       content: body.prompt.trim(),
     });
 
     return NextResponse.json({ taskId, cost });
   } catch (err) {
-    // Task never started — give the credits back (nothing was charged for admins).
-    if (!isAdmin) await grantCredits(user.id, cost, "refund", body.projectId);
+    // Task never started — undo the charge, whichever form it took.
+    if (freeShot) await releaseFree(user.id, "video");
+    else if (!isAdmin) await grantCredits(user.id, cost, "refund", video.project_id);
     const message = err instanceof Error ? err.message : "Video generation failed";
     return NextResponse.json({ error: message }, { status: 502 });
   }

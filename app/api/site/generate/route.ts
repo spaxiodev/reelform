@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { spendCredits, grantCredits } from "@/lib/credits";
 import { isAdminUser } from "@/lib/admin";
 import { generateSite, buildInitialBrief, buildEditBrief } from "@/lib/claude";
 import { MODELS, type ModelId } from "@/lib/pricing";
+import { listVideos, readyVideos } from "@/lib/videos";
+import { authorizeSiteBuild, releaseFree } from "@/lib/entitlements";
 
 // Streams the generated HTML as plain text. If something goes wrong after
 // the stream has started, an error sentinel line is appended for the client.
@@ -17,7 +20,6 @@ interface Body {
   projectId: string;
   mode: "create" | "edit";
   model: ModelId;
-  videoMode: "loop" | "scrub";
   // create
   name?: string;
   industry?: string;
@@ -33,18 +35,23 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  // Bounds provider spend per account — credits cap total spend, not rate.
+  const limited = await enforceRateLimit(user.id, "site_generate");
+  if (limited) return limited;
+
   const body = (await request.json()) as Body;
   const model = MODELS[body.model] ? body.model : null;
   if (!model) return NextResponse.json({ error: "Unknown model" }, { status: 400 });
-  const videoMode = body.videoMode === "scrub" ? "scrub" : "loop";
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, name, industry, site_brief, video_brief, video_url, site_html")
+    .select("id, name, industry, site_brief, site_html")
     .eq("id", body.projectId)
     .single();
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  if (!project.video_url) {
+
+  const videos = readyVideos(await listVideos(supabase, project.id));
+  if (videos.length === 0) {
     return NextResponse.json({ error: "Generate and approve a video first" }, { status: 400 });
   }
 
@@ -58,8 +65,7 @@ export async function POST(request: NextRequest) {
     brief = buildEditBrief({
       instruction: userMessage,
       currentHtml: project.site_html,
-      videoUrl: project.video_url,
-      videoMode,
+      videos,
     });
   } else {
     if (!body.siteBrief?.trim()) {
@@ -70,20 +76,34 @@ export async function POST(request: NextRequest) {
       name: body.name?.trim() || project.name,
       industry: body.industry?.trim() || "General",
       siteBrief: userMessage,
-      videoBrief: project.video_brief ?? "",
-      videoUrl: project.video_url,
-      videoMode,
+      videos,
     });
   }
 
+  // The free build covers one *create*; edits are subscribers-only.
   const isAdmin = isAdminUser(user.id);
-  const cost = isAdmin ? 0 : MODELS[model].credits;
+  let freeBuild = false;
+  let cost = 0;
   if (!isAdmin) {
-    const ok = await spendCredits(user.id, cost, "site_generation", body.projectId);
-    if (!ok) {
-      return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+    const grant = await authorizeSiteBuild(supabase, user.id, body.mode === "edit" ? "edit" : "create");
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
+    }
+    freeBuild = grant.billing === "free";
+    if (!freeBuild) {
+      cost = MODELS[model].credits;
+      const ok = await spendCredits(user.id, cost, "site_generation", body.projectId);
+      if (!ok) {
+        return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+      }
     }
   }
+
+  // Undoes whichever form the charge took, for the two failure paths below.
+  const refund = async () => {
+    if (freeBuild) await releaseFree(user.id, "site");
+    else if (!isAdmin) await grantCredits(user.id, cost, "refund", body.projectId);
+  };
 
   const admin = createSupabaseAdmin();
   // Persist brief metadata up front so the project reflects the latest inputs.
@@ -93,7 +113,6 @@ export async function POST(request: NextRequest) {
       name: body.name?.trim() || project.name,
       industry: body.industry?.trim() || project.industry,
       site_brief: body.mode === "create" ? userMessage : project.site_brief,
-      video_mode: videoMode,
       model,
       updated_at: new Date().toISOString(),
     })
@@ -111,9 +130,9 @@ export async function POST(request: NextRequest) {
         });
 
         if (result.refused || !result.html.trim()) {
-          if (!isAdmin) await grantCredits(user.id, cost, "refund", body.projectId);
+          await refund();
           controller.enqueue(
-            encoder.encode(`${ERROR_SENTINEL}The model declined this request. Credits were refunded — try rephrasing.`)
+            encoder.encode(`${ERROR_SENTINEL}The model declined this request. You have not been charged — try rephrasing.`)
           );
           controller.close();
           return;
@@ -143,9 +162,9 @@ export async function POST(request: NextRequest) {
 
         controller.close();
       } catch (err) {
-        if (!isAdmin) await grantCredits(user.id, cost, "refund", body.projectId).catch(() => {});
+        await refund().catch(() => {});
         const message = err instanceof Error ? err.message : "Generation failed";
-        controller.enqueue(encoder.encode(`${ERROR_SENTINEL}${message} — credits were refunded.`));
+        controller.enqueue(encoder.encode(`${ERROR_SENTINEL}${message} — you have not been charged.`));
         controller.close();
       }
     },

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
-export const CONTACT_EMAIL = "admin@polidori.dev";
+// Re-exported for the pages that have always imported it from here.
+export { CONTACT_EMAIL };
 
 const COLUMNS: { label: string; links: { href: string; text: string }[] }[] = [
   {
@@ -8,7 +10,7 @@ const COLUMNS: { label: string; links: { href: string; text: string }[] }[] = [
     links: [
       { href: "/showcase", text: "Showcase" },
       { href: "/pricing", text: "Pricing" },
-      { href: "/login?mode=signup", text: "Start free" },
+      { href: "/create", text: "Start building" },
       { href: "/dashboard", text: "Dashboard" },
       { href: "/account", text: "Account" },
     ],
@@ -24,7 +26,9 @@ const COLUMNS: { label: string; links: { href: string; text: string }[] }[] = [
   {
     label: "SUPPORT",
     links: [
+      { href: "/guide", text: "Getting started" },
       { href: "/faq", text: "FAQ" },
+      { href: "/changelog", text: "Changelog" },
       { href: "/contact", text: "Contact us" },
       { href: `mailto:${CONTACT_EMAIL}`, text: CONTACT_EMAIL },
     ],

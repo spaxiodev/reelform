@@ -7,6 +7,7 @@ const TABS = [
   { href: "/account", label: "Overview" },
   { href: "/account/billing", label: "Billing & invoices" },
   { href: "/account/credits", label: "Credits & activity" },
+  { href: "/account/integrations", label: "Deploy integrations" },
   { href: "/account/security", label: "Security" },
 ];
 

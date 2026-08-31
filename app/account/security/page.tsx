@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { DeleteAccountButton } from "@/components/AccountActions";
 import { ChangePasswordForm, SignOutEverywhereButton } from "@/components/SecurityActions";
 
-export const metadata = { title: "Security — Reelform" };
+export const metadata = { title: "Security", ...PRIVATE_PAGE };
 
 export default async function SecurityPage() {
   const supabase = await createSupabaseServer();

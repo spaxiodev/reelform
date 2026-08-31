@@ -1,7 +1,13 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
-export const metadata = { title: "FAQ — Reelform" };
+export const metadata = pageMeta({
+  title: "FAQ",
+  description:
+    "How Reelform works: what you get, how credits and refunds work, what happens if you don't like the video, and how to keep editing your site with Claude.",
+  path: "/faq",
+});
 
 export default function FaqPage() {
   return (
@@ -18,7 +24,7 @@ export default function FaqPage() {
         <p>
           Everything runs on credits: video renders and site builds each cost a fixed amount shown
           before you confirm. One credit is roughly $0.01 of value. Every new account starts with
-          150 free credits.
+          one complete website free — a hero video and a full site build.
         </p>
         <p>
           Subscription credits refill monthly; top-up credits never expire. You can see every

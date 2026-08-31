@@ -1,7 +1,13 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
-export const metadata = { title: "Terms of Service — Reelform" };
+export const metadata = pageMeta({
+  title: "Terms of Service",
+  description:
+    "The terms governing your use of Reelform, including account rules, credits, generated content ownership and acceptable use.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (
@@ -16,7 +22,7 @@ export default function TermsPage() {
 
       <LegalSection heading="2. The Service">
         <p>
-          Reelform lets you generate AI videos (via Seedance) and AI-built websites (via
+          Reelform lets you generate AI videos (via Higgsfield) and AI-built websites (via
           Anthropic&rsquo;s Claude) from text prompts, preview the results, and download the
           generated files. AI output is probabilistic: we do not guarantee that any particular
           generation will match your expectations, and results may vary between runs.
@@ -63,7 +69,7 @@ export default function TermsPage() {
           You retain ownership of the prompts you submit. To the extent we hold any rights in the
           videos and websites generated for you, we assign them to you: you may use, modify, host,
           and commercialize your generated output freely, subject to the third-party provider terms
-          that apply to AI-generated content (Anthropic and Seedance/BytePlus).
+          that apply to AI-generated content (Anthropic and Higgsfield).
         </p>
         <p>
           You grant us a limited license to store and process your content solely to operate the

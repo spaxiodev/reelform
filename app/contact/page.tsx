@@ -1,7 +1,13 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
-export const metadata = { title: "Contact — Reelform" };
+export const metadata = pageMeta({
+  title: "Contact",
+  description:
+    "Get in touch with the Reelform team about billing, bugs, feature requests or anything else.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

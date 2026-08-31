@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { suggestShot } from "@/lib/claude";
 
 // Turns the user's website brief into a ready-to-use hero-video prompt.
@@ -13,10 +14,17 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  // Bounds provider spend per account — credits cap total spend, not rate.
+  const limited = await enforceRateLimit(user.id, "suggest_shot");
+  if (limited) return limited;
+
   const body = await request.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const industry = typeof body.industry === "string" ? body.industry.trim() : "";
   const siteBrief = typeof body.siteBrief === "string" ? body.siteBrief.trim() : "";
+  // Which slot on the page this shot is for, e.g. "Hero video" — keeps the
+  // suggestions for a project's several clips from all coming back the same.
+  const role = typeof body.role === "string" ? body.role.trim().slice(0, 60) : "";
 
   if (!industry && !siteBrief) {
     return NextResponse.json(
@@ -26,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const prompt = await suggestShot({ name, industry, siteBrief });
+    const prompt = await suggestShot({ name, industry, siteBrief, role });
     if (!prompt) {
       return NextResponse.json({ error: "Could not suggest a shot — try again." }, { status: 502 });
     }

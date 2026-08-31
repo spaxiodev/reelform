@@ -54,7 +54,7 @@ async function reencodeAllIntra(input: Buffer): Promise<Buffer | null> {
 }
 
 // Copies a provider-hosted video into our own Supabase Storage and returns a
-// permanent public URL. Provider CDN links (especially seedance2.ai) expire —
+// permanent public URL. Provider CDN links (Higgsfield included) expire —
 // a site shipped with an expiring URL would silently lose its hero video.
 // Returns null on any failure so callers can fall back to the provider URL.
 export async function storeVideo(

@@ -3,11 +3,14 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShowcaseGrid, type ShowcaseSite } from "@/components/ShowcaseGrid";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata = {
-  title: "Showcase — Reelform",
-  description: "Real video-first websites directed and shipped by Reelform users.",
-};
+export const metadata = pageMeta({
+  title: "Showcase",
+  description:
+    "Real video-first websites directed, shot and shipped by Reelform users — each one built by Claude around a Seedance hero video.",
+  path: "/showcase",
+});
 
 export default async function ShowcasePage() {
   const supabase = await createSupabaseServer();
@@ -35,7 +38,7 @@ export default async function ShowcasePage() {
     <div className="flex flex-col min-h-screen">
       <SiteHeader />
 
-      <main className="flex-1 px-6 md:px-10 py-16 max-w-6xl mx-auto w-full">
+      <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-6xl mx-auto w-full">
         <p className="mono-label">PREMIERE NIGHT — MADE WITH REELFORM</p>
         <h1 className="mt-3 text-4xl md:text-6xl font-medium tracking-tight">The showcase</h1>
         <p className="mt-4 max-w-2xl text-lg text-muted leading-relaxed">
@@ -53,8 +56,8 @@ export default async function ShowcasePage() {
               No sites have been published yet. Build one and hit “Publish to showcase” in the
               studio — you could be first.
             </p>
-            <Link href="/login?mode=signup" className="btn-primary mt-8">
-              Roll camera — 150 free credits
+            <Link href="/create" className="btn-primary mt-8">
+              Start building — first site free
             </Link>
           </div>
         ) : (

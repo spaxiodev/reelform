@@ -1,11 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toaster";
-import { MODELS, videoCost, type ModelId, type Resolution, type Duration } from "@/lib/pricing";
-import { SITE_TEMPLATES, VIDEO_TEMPLATES } from "@/lib/templates";
+import { MODELS, videoCost, type ModelId } from "@/lib/pricing";
+import {
+  DEFAULT_VIDEO_MODEL,
+  isVideoModel,
+  type Resolution,
+  type VideoModelId,
+} from "@/lib/higgsfield";
+import { SITE_TEMPLATES } from "@/lib/templates";
+import { MAX_VIDEOS_PER_PROJECT, type VideoRow } from "@/lib/videos";
+import ProviderStatus from "@/components/ProviderStatus";
+import { Select } from "@/components/ui/Select";
+import { ClipCard, type ClipDraft, type Ratio } from "@/components/ClipCard";
+import { DeployPanel } from "@/components/DeployPanel";
+import { SiteChat, type ChatMessage } from "@/components/SiteChat";
+import { trackEvent } from "@/lib/analytics";
 
 const ERROR_SENTINEL = "\n<<<REELFORM_ERROR>>>";
 
@@ -14,14 +27,12 @@ interface ProjectRow {
   name: string;
   industry: string | null;
   site_brief: string | null;
-  video_brief: string | null;
   video_mode: "loop" | "scrub";
-  video_status: string;
-  video_url: string | null;
-  video_settings: { resolution?: Resolution; duration?: Duration; ratio?: string } | null;
   site_html: string | null;
   model: string;
   published: boolean;
+  vercel_url: string | null;
+  supabase_project_ref: string | null;
 }
 
 interface MessageRow {
@@ -30,8 +41,6 @@ interface MessageRow {
   content: string;
   created_at: string;
 }
-
-type Ratio = "16:9" | "9:16" | "1:1" | "21:9";
 
 function stripFences(text: string): string {
   const trimmed = text.trim();
@@ -42,15 +51,33 @@ function stripFences(text: string): string {
 const chipCls =
   "rounded-full border border-line-strong px-3 py-1.5 text-xs font-medium text-muted hover:border-primary hover:text-primary transition-colors cursor-pointer";
 
+// Names the slot the "+" would add next, by how many clips already exist.
+const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth"];
+
+function draftFor(clip: VideoRow): ClipDraft {
+  const s = clip.settings ?? {};
+  return {
+    prompt: clip.prompt ?? "",
+    model: isVideoModel(s.model) ? (s.model as VideoModelId) : DEFAULT_VIDEO_MODEL,
+    resolution: (s.resolution as Resolution) ?? "720p",
+    duration: typeof s.duration === "number" ? s.duration : 5,
+    ratio: (s.ratio as Ratio) ?? "16:9",
+  };
+}
+
 export function Studio({
   project,
+  initialVideos,
   initialCredits,
   initialMessages,
+  plan,
   isAdmin = false,
 }: {
   project: ProjectRow;
+  initialVideos: VideoRow[];
   initialCredits: number;
   initialMessages: MessageRow[];
+  plan: string;
   isAdmin?: boolean;
 }) {
   // Brief
@@ -58,33 +85,37 @@ export function Studio({
   const [industry, setIndustry] = useState(project.industry ?? "");
   const [siteBrief, setSiteBrief] = useState(project.site_brief ?? "");
 
-  // Video
-  const [videoPrompt, setVideoPrompt] = useState(project.video_brief ?? "");
-  const [resolution, setResolution] = useState<Resolution>(
-    project.video_settings?.resolution ?? "720p"
+  // Videos — a production can feature several clips.
+  const [clips, setClips] = useState<VideoRow[]>(initialVideos);
+  const [drafts, setDrafts] = useState<Record<string, ClipDraft>>(() =>
+    Object.fromEntries(initialVideos.map((c) => [c.id, draftFor(c)]))
   );
-  const [duration, setDuration] = useState<Duration>(project.video_settings?.duration ?? 5);
-  const [ratio, setRatio] = useState<Ratio>((project.video_settings?.ratio as Ratio) ?? "16:9");
-  const [videoStatus, setVideoStatus] = useState(project.video_status);
-  const [videoUrl, setVideoUrl] = useState(project.video_url);
+  const [busyClip, setBusyClip] = useState<string | null>(null);
+  const [suggestingClip, setSuggestingClip] = useState<string | null>(null);
+  const [addingClip, setAddingClip] = useState(false);
+
+  // Asking for the next video in plain language, once the first one exists.
+  const [shotChat, setShotChat] = useState<ChatMessage[]>(() =>
+    initialMessages.filter((m) => m.target === "video").map((m) => ({ role: m.role, content: m.content }))
+  );
+  const [shotDraft, setShotDraft] = useState("");
+  const [requestingClip, setRequestingClip] = useState(false);
 
   // Build
-  const [videoMode, setVideoMode] = useState<"loop" | "scrub">(project.video_mode);
   const [model, setModel] = useState<ModelId>(
     (project.model as ModelId) in MODELS ? (project.model as ModelId) : "claude-opus-4-8"
   );
   const [siteHtml, setSiteHtml] = useState(project.site_html);
-  const [instruction, setInstruction] = useState("");
   const [published, setPublished] = useState(project.published);
   const [publishing, setPublishing] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  // Publishing to the user's own Vercel / Supabase accounts.
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [liveUrl, setLiveUrl] = useState<string | null>(project.vercel_url);
+
   // UI
   const [credits, setCredits] = useState(initialCredits);
-  const [messages, setMessages] = useState(initialMessages);
-  const [busyVideo, setBusyVideo] = useState(false);
-  const [suggestingShot, setSuggestingShot] = useState(false);
-  const [showVideoAdvanced, setShowVideoAdvanced] = useState(false);
   const [showBuildAdvanced, setShowBuildAdvanced] = useState(false);
   const [building, setBuilding] = useState(false);
   const [streamedChars, setStreamedChars] = useState(0);
@@ -92,21 +123,51 @@ export function Studio({
   const [error, setError] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
 
-  // Agentic editing ("like Claude Code"): live narration + metered cost.
+  // The conversation under the preview: past turns plus the edit running now.
+  const [chat, setChat] = useState<ChatMessage[]>(() =>
+    initialMessages.filter((m) => m.target === "claude").map((m) => ({ role: m.role, content: m.content }))
+  );
+  const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [editTranscript, setEditTranscript] = useState("");
   const [lastEditCost, setLastEditCost] = useState<number | null>(null);
-  const editScrollRef = useRef<HTMLDivElement>(null);
 
   // Wizard: one step owns the whole screen at a time.
   const [step, setStep] = useState<1 | 2 | 3>(
-    project.site_html ? 3 : project.video_url ? 2 : 1
+    project.site_html ? 3 : initialVideos.some((v) => v.status === "succeeded") ? 2 : 1
   );
-  const [reshooting, setReshooting] = useState(false); // show shot controls again over ready footage
-  const [showChanges, setShowChanges] = useState(false); // "ask Claude for changes" panel over the preview
-  const [showLog, setShowLog] = useState(false); // collapsed project history on step 1
 
   const streamRef = useRef("");
+
+  // How much of the screen the site preview takes; the chat gets the rest.
+  const [previewPct, setPreviewPct] = useState(58);
+  const splitRef = useRef<HTMLDivElement>(null);
+
+  function startDragSplit(e: React.PointerEvent) {
+    e.preventDefault();
+    const container = splitRef.current;
+    if (!container) return;
+    const move = (ev: PointerEvent) => {
+      const { top, height } = container.getBoundingClientRect();
+      const pct = ((ev.clientY - top) / height) * 100;
+      setPreviewPct(Math.min(85, Math.max(25, pct)));
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+  }
+
+  const readyClips = useMemo(
+    () => clips.filter((c) => c.status === "succeeded" && c.url),
+    [clips]
+  );
+  const pendingClips = useMemo(
+    () => clips.filter((c) => c.status === "queued" || c.status === "running"),
+    [clips]
+  );
 
   const refreshCredits = useCallback(async () => {
     const supabase = createSupabaseBrowser();
@@ -114,110 +175,216 @@ export function Studio({
     if (data) setCredits(data.credits);
   }, []);
 
-  // ── Video polling ──────────────────────────────────────────────────
+  const patchClip = useCallback((id: string, patch: Partial<VideoRow>) => {
+    setClips((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }, []);
+
+  // ── Video polling: every clip still rendering ──────────────────────
+  const pendingIds = pendingClips.map((c) => c.id).join(",");
   useEffect(() => {
-    if (videoStatus !== "queued" && videoStatus !== "running") return;
+    if (!pendingIds) return;
+    const ids = pendingIds.split(",");
     const timer = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/video/status?projectId=${project.id}`);
-        const data = await res.json();
-        if (data.status === "succeeded") {
-          setVideoStatus("succeeded");
-          setVideoUrl(data.videoUrl);
-          setReshooting(false); // show the fresh footage, not the shot controls
-          toast("Footage is ready — review it in the preview.", "success");
-          clearInterval(timer);
-        } else if (data.status === "failed") {
-          setVideoStatus("failed");
-          setError(data.error ?? "Video generation failed — credits refunded.");
-          refreshCredits();
-          clearInterval(timer);
-        } else if (data.status) {
-          setVideoStatus(data.status);
+      for (const id of ids) {
+        try {
+          const res = await fetch(`/api/video/status?videoId=${id}`);
+          const data = await res.json();
+          if (data.status === "succeeded") {
+            patchClip(id, { status: "succeeded", url: data.videoUrl });
+            trackEvent("video_succeeded");
+            toast("Footage is ready — review it in the studio.", "success");
+          } else if (data.status === "failed") {
+            patchClip(id, { status: "failed" });
+            trackEvent("video_failed");
+            setError(data.error ?? "Video generation failed — credits refunded.");
+            refreshCredits();
+          } else if (data.status) {
+            patchClip(id, { status: data.status });
+          }
+        } catch {
+          // transient network error — keep polling
         }
-      } catch {
-        // transient network error — keep polling
       }
-    }, 10000); // seedance2.ai asks for <=1 poll per 10s
+    }, 10000); // Higgsfield asks for <=1 status poll per request per 10s
     return () => clearInterval(timer);
-  }, [videoStatus, project.id, refreshCredits]);
+  }, [pendingIds, patchClip, refreshCredits]);
 
-  // ── Actions ────────────────────────────────────────────────────────
-  const vCost = videoCost(resolution, duration);
+  // ── Clip actions ───────────────────────────────────────────────────
+  function setDraftFor(id: string, patch: Partial<ClipDraft>) {
+    setDrafts((d) => ({ ...d, [id]: { ...d[id], ...patch } }));
+  }
 
-  async function generateVideo() {
-    if (!videoPrompt.trim()) {
-      setError("Describe the video first — or start from a shot style below.");
+  // Ask for the next video in words — Claude works out the shot and rolls it.
+  async function requestClip() {
+    const ask = shotDraft.trim();
+    if (!ask || requestingClip) return;
+    setError(null);
+    setRequestingClip(true);
+    setShotChat((c) => [...c, { role: "user", content: ask }]);
+    setShotDraft("");
+    try {
+      const res = await fetch("/api/video/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, request: ask }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.video) {
+        const message =
+          res.status === 402
+            ? `Not enough credits (${data.cost} needed). Top up on the pricing page.`
+            : data.message ?? data.error ?? "Could not start that video.";
+        setError(message);
+        setShotChat((c) => [...c, { role: "assistant", content: message }]);
+        return;
+      }
+      const video = data.video as VideoRow;
+      trackEvent("video_requested", { source: "chat" });
+      setClips((cs) => [...cs, video]);
+      setDrafts((d) => ({ ...d, [video.id]: draftFor(video) }));
+      setShotChat((c) => [...c, { role: "assistant", content: data.reply }]);
+    } catch {
+      const message = "Network error — please try again.";
+      setError(message);
+      setShotChat((c) => [...c, { role: "assistant", content: message }]);
+    } finally {
+      setRequestingClip(false);
+      refreshCredits();
+    }
+  }
+
+  // Add the next empty slot by hand. One card at a time — the next "+" only
+  // shows once this one exists, so nobody faces six blank squares at once.
+  async function addClip() {
+    if (addingClip || clips.length >= MAX_VIDEOS_PER_PROJECT) return;
+    setAddingClip(true);
+    try {
+      const res = await fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.video) {
+        toast(data.message ?? data.error ?? "Could not add another video — try again.", "error");
+        return;
+      }
+      const clip = data.video as VideoRow;
+      setClips((cs) => [...cs, clip]);
+      setDrafts((d) => ({ ...d, [clip.id]: draftFor(clip) }));
+    } catch {
+      toast("Could not add another video — check your connection.", "error");
+    } finally {
+      setAddingClip(false);
+    }
+  }
+
+  async function removeClip(id: string) {
+    const previous = clips;
+    setClips((cs) => cs.filter((c) => c.id !== id));
+    const res = await fetch(`/api/videos?videoId=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setClips(previous);
+      // 409 means it's still rendering — the server explains why in `error`.
+      const data = await res.json().catch(() => null);
+      toast(data?.error ?? "Could not remove that video — try again.", "error");
+    }
+  }
+
+  async function updateClip(id: string, patch: { label?: string; mode?: "loop" | "scrub" }) {
+    const previous = clips.find((c) => c.id === id);
+    patchClip(id, patch);
+    const res = await fetch("/api/videos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId: id, ...patch }),
+    });
+    if (!res.ok && previous) {
+      patchClip(id, { label: previous.label, mode: previous.mode });
+      toast("Could not save that change — try again.", "error");
+    }
+  }
+
+  async function generateClip(id: string) {
+    const d = drafts[id];
+    if (!d?.prompt.trim()) {
+      setError("Describe the video first — or start from a shot style.");
       return;
     }
     setError(null);
-    setBusyVideo(true);
+    setBusyClip(id);
     try {
       const res = await fetch("/api/video/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectId: project.id,
-          prompt: videoPrompt,
-          resolution,
-          duration,
-          ratio,
+          videoId: id,
+          prompt: d.prompt,
+          resolution: d.resolution,
+          duration: d.duration,
+          ratio: d.ratio,
+          model: d.model,
         }),
       });
       const data = await res.json();
       if (res.status === 402) {
         setError(`Not enough credits (${data.cost} needed). Top up on the pricing page.`);
       } else if (!res.ok) {
-        setError(data.error ?? "Video generation failed.");
+        setError(data.message ?? data.error ?? "Video generation failed.");
       } else {
-        setVideoStatus("queued");
-        setVideoUrl(null);
-        setMessages((m) => [
-          ...m,
-          { role: "user", target: "seedance", content: videoPrompt, created_at: new Date().toISOString() },
-        ]);
+        patchClip(id, { status: "queued", url: null, prompt: d.prompt });
+        trackEvent("video_requested", {
+          resolution: d.resolution,
+          duration: d.duration,
+          ratio: d.ratio,
+          model: d.model,
+          source: "manual",
+        });
       }
     } finally {
-      setBusyVideo(false);
+      setBusyClip(null);
       refreshCredits();
     }
   }
 
-  async function suggestShot() {
+  async function suggestShot(id: string) {
     if (!industry.trim() && !siteBrief.trim()) {
-      setError("Fill in the brief above first — then I'll suggest a shot.");
+      setError("Fill in the brief first — then I'll suggest a shot.");
       return;
     }
     setError(null);
-    setSuggestingShot(true);
+    setSuggestingClip(id);
     try {
+      const clip = clips.find((c) => c.id === id);
       const res = await fetch("/api/site/suggest-shot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, industry, siteBrief }),
+        body: JSON.stringify({ name, industry, siteBrief, role: clip?.label }),
       });
       const data = await res.json();
       if (!res.ok || !data.prompt) {
-        setError(data.error ?? "Could not suggest a shot — try again.");
+        setError(data.message ?? data.error ?? "Could not suggest a shot — try again.");
         return;
       }
-      setVideoPrompt(data.prompt);
+      setDraftFor(id, { prompt: data.prompt });
       toast("Shot suggested — tweak it or generate as-is.", "success");
     } catch {
       setError("Could not suggest a shot — check your connection and try again.");
     } finally {
-      setSuggestingShot(false);
+      setSuggestingClip(null);
     }
   }
 
-  async function runClaude(mode: "create" | "edit") {
+  // ── Build ──────────────────────────────────────────────────────────
+  async function runClaude() {
     setError(null);
     setBuilding(true);
     setStreamedChars(0);
     setStreamTail("");
     streamRef.current = "";
+    trackEvent("site_build_started", { model, clips: clips.length });
 
-    const userMessage = mode === "edit" ? instruction.trim() : siteBrief.trim();
+    const userMessage = siteBrief.trim();
 
     try {
       const res = await fetch("/api/site/generate", {
@@ -225,13 +392,11 @@ export function Studio({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
-          mode,
+          mode: "create",
           model,
-          videoMode,
           name,
           industry,
           siteBrief,
-          instruction: mode === "edit" ? userMessage : undefined,
         }),
       });
 
@@ -240,7 +405,8 @@ export function Studio({
         setError(
           res.status === 402
             ? `Not enough credits (${data.cost} needed). Top up on the pricing page.`
-            : data.error ?? "Generation failed."
+            : // 429 ships a human-readable `message`; everything else uses `error`.
+              data.message ?? data.error ?? "Generation failed."
         );
         return;
       }
@@ -264,18 +430,13 @@ export function Studio({
 
       const html = stripFences(full);
       setSiteHtml(html);
-      toast(mode === "edit" ? "Site updated." : "First cut is live in the preview.", "success");
+      trackEvent("site_build_completed", { model, chars: html.length });
+      toast("Your site is live in the preview — scroll through it.", "success");
       setPreviewVersion((v) => v + 1);
-      setInstruction("");
-      setMessages((m) => [
-        ...m,
-        { role: "user", target: "claude", content: userMessage, created_at: new Date().toISOString() },
-        {
-          role: "assistant",
-          target: "claude",
-          content: mode === "edit" ? "Updated the site." : "Built the first version of the site.",
-          created_at: new Date().toISOString(),
-        },
+      setChat((c) => [
+        ...c,
+        { role: "user", content: userMessage },
+        { role: "assistant", content: "Built the first version of the site." },
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed.");
@@ -287,12 +448,16 @@ export function Studio({
 
   // Claude-Code-style edit: streams narration live and charges by real usage.
   async function runEdit() {
-    const change = instruction.trim();
+    const change = draft.trim();
     if (!change || editing) return;
     setError(null);
     setEditing(true);
     setLastEditCost(null);
     setEditTranscript("");
+    setChat((c) => [...c, { role: "user", content: change }]);
+    setDraft("");
+
+    let transcript = "";
 
     try {
       const res = await fetch("/api/site/edit", {
@@ -303,18 +468,19 @@ export function Studio({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(
+        const message =
           res.status === 402
             ? `Not enough credits (~${data.cost} needed to start). Top up on the pricing page.`
-            : data.error ?? "Edit failed."
-        );
+            : data.error ?? "Edit failed.";
+        setError(message);
+        // Keep the thread readable: never leave a question without an answer.
+        setChat((c) => [...c, { role: "assistant", content: message }]);
         return;
       }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let done = false;
 
       for (;;) {
         const { done: streamDone, value } = await reader.read();
@@ -327,48 +493,44 @@ export function Studio({
           const line = buffer.slice(0, nl).trim();
           buffer = buffer.slice(nl + 1);
           if (!line) continue;
-          let evt: { type: string; text?: string; label?: string; html?: string; credits?: number; summary?: string; message?: string };
+          let evt: {
+            type: string;
+            text?: string;
+            label?: string;
+            html?: string;
+            credits?: number;
+            summary?: string;
+            message?: string;
+          };
           try {
             evt = JSON.parse(line);
           } catch {
             continue;
           }
           if (evt.type === "text" && evt.text) {
-            setEditTranscript((t) => t + evt.text);
-            requestAnimationFrame(() => {
-              editScrollRef.current?.scrollTo({ top: editScrollRef.current.scrollHeight });
-            });
+            transcript += evt.text;
+            setEditTranscript(transcript);
           } else if (evt.type === "step" && evt.label) {
-            setEditTranscript((t) => t + `\n· ${evt.label}\n`);
+            transcript += `\n· ${evt.label}\n`;
+            setEditTranscript(transcript);
           } else if (evt.type === "error") {
-            setError(evt.message ?? "Edit failed.");
+            const message = evt.message ?? "Edit failed.";
+            setError(message);
+            setChat((c) => [...c, { role: "assistant", content: message }]);
+            setEditTranscript("");
           } else if (evt.type === "done") {
-            done = true;
             if (evt.html) {
               setSiteHtml(evt.html);
               setPreviewVersion((v) => v + 1);
             }
             if (typeof evt.credits === "number") setLastEditCost(evt.credits);
-            setInstruction("");
-            setMessages((m) => [
-              ...m,
-              { role: "user", target: "claude", content: change, created_at: new Date().toISOString() },
-              {
-                role: "assistant",
-                target: "claude",
-                content: evt.summary ?? "Applied your change.",
-                created_at: new Date().toISOString(),
-              },
-            ]);
-            toast(
-              isAdmin ? "Change applied." : `Change applied · ${evt.credits} credits.`,
-              "success"
-            );
+            setChat((c) => [...c, { role: "assistant", content: evt.summary ?? "Applied your change." }]);
+            setEditTranscript("");
+            trackEvent("site_edited", { model });
+            toast(isAdmin ? "Change applied." : `Change applied · ${evt.credits} credits.`, "success");
           }
         }
       }
-
-      if (!done && !editTranscript) setError("The edit ended unexpectedly — please try again.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Edit failed.");
     } finally {
@@ -392,6 +554,7 @@ export function Studio({
         return;
       }
       setPublished(next);
+      if (next) trackEvent("site_published");
       toast(
         next
           ? "Published — your site is now featured in the showcase."
@@ -406,7 +569,7 @@ export function Studio({
   async function downloadHtml() {
     if (!siteHtml || downloading) return;
     setDownloading(true);
-    toast("Packaging your site and video…", "info");
+    toast("Packaging your site and videos…", "info");
     try {
       const res = await fetch("/api/site/export", {
         method: "POST",
@@ -415,7 +578,7 @@ export function Studio({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        toast(data?.error ?? "Could not package the download — try again.", "error");
+        toast(data?.message ?? data?.error ?? "Could not package the download — try again.", "error");
         return;
       }
       const blob = await res.blob();
@@ -425,6 +588,7 @@ export function Studio({
       a.download = `${name.replace(/\s+/g, "-").toLowerCase() || "site"}.zip`;
       a.click();
       URL.revokeObjectURL(url);
+      trackEvent("site_exported", { clips: clips.length });
       toast("Downloaded — unzip and host the folder anywhere.", "success");
     } catch {
       toast("Could not package the download — try again.", "error");
@@ -447,29 +611,21 @@ export function Studio({
     toast("Template loaded — replace the [bracketed] parts with your details.", "info");
   }
 
-  function applyVideoTemplate(id: string) {
-    const t = VIDEO_TEMPLATES.find((x) => x.id === id);
-    if (!t) return;
-    setVideoPrompt(t.prompt);
-    toast("Shot style loaded — replace the [bracketed] part with your subject.", "info");
-  }
-
-  const videoBusy = videoStatus === "queued" || videoStatus === "running";
   const claudeCost = MODELS[model].credits;
+  // Chat-requested clips are shot at the studio default (see /api/video/request).
+  const extraClipCost = videoCost(DEFAULT_VIDEO_MODEL, "720p", 5);
 
   // Admins never spend credits — show "Free" wherever a cost would appear.
   const costLabel = (n: number) => (isAdmin ? "Free" : `${n} credits`);
 
   const steps = [
     { n: 1 as const, label: "Brief", done: siteBrief.trim().length > 0 },
-    { n: 2 as const, label: "Video", done: Boolean(videoUrl) },
+    { n: 2 as const, label: "Videos", done: readyClips.length > 0 },
     { n: 3 as const, label: "Build", done: Boolean(siteHtml) },
   ];
 
   function goStep(n: 1 | 2 | 3) {
     setError(null);
-    setReshooting(false);
-    setShowChanges(false);
     setStep(n);
   }
 
@@ -513,9 +669,16 @@ export function Studio({
               <button
                 onClick={downloadHtml}
                 disabled={downloading}
+                className="btn-ghost !py-2 !px-3.5 !text-xs"
+              >
+                {downloading ? "Packaging…" : "⬇ Download"}
+              </button>
+              <button
+                onClick={() => setDeployOpen(true)}
+                title={liveUrl ? `Live at ${liveUrl} — click to ship the latest version` : "Push this site live on your own Vercel and Supabase"}
                 className="btn-primary !py-2 !px-4 !text-xs"
               >
-                {downloading ? "Packaging…" : "⬇ Download site"}
+                {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
               </button>
             </>
           )}
@@ -562,7 +725,13 @@ export function Studio({
       <div className="flex-1 min-h-0 flex flex-col bg-bg-raise">
         {error && (
           <div className="mx-auto mt-4 w-full max-w-2xl px-6 shrink-0">
-            <div className="p-3 border border-danger/40 bg-danger/5 text-danger text-sm rounded-lg">
+            {/* assertive: a failed render or a refused build is the one thing
+                the user must hear about immediately. */}
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3 border border-danger/40 bg-danger/5 text-danger text-sm rounded-lg"
+            >
               {error}
             </div>
           </div>
@@ -620,212 +789,111 @@ export function Studio({
                   disabled={!siteBrief.trim()}
                   className="btn-primary !py-3 !px-6"
                 >
-                  Next: create your hero video →
+                  Next: create your videos →
                 </button>
               </div>
 
-              {messages.length > 0 && (
-                <div className="mt-10 border-t border-line pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowLog((v) => !v)}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="mono-label">PROJECT HISTORY · {messages.length}</span>
-                    <span className="text-faint text-xs">{showLog ? "▲" : "▾"}</span>
-                  </button>
-                  {showLog && (
-                    <ul className="mt-3 space-y-2.5">
-                      {messages.map((m, i) => (
-                        <li key={i} className="text-xs leading-relaxed">
-                          <span
-                            className={`font-bold ${
-                              m.target === "seedance" ? "text-coral" : "text-primary"
-                            }`}
-                          >
-                            {m.target === "seedance"
-                              ? "SEEDANCE"
-                              : m.role === "user"
-                              ? "YOU → CLAUDE"
-                              : "CLAUDE"}
-                          </span>{" "}
-                          <span className="text-muted">{m.content.slice(0, 160)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         )}
 
-        {/* ══ STEP 2 · VIDEO ══ */}
+        {/* ══ STEP 2 · VIDEOS ══ */}
         {step === 2 && (
-          <div className="flex-1 min-h-0 flex flex-col">
-            {videoBusy ? (
-              // Rendering — full screen
-              <div className="flex-1 flex flex-col">
-                <div className="stream-bar" />
-                <div className="flex-1 flex flex-col items-center justify-center p-10 gap-4 text-center">
-                  <p className="mono-label flex items-center gap-2">
-                    <span className="rec-dot" /> RENDERING YOUR FOOTAGE
-                  </p>
-                  <p className="text-2xl font-bold">Rolling camera…</p>
-                  <p className="text-muted max-w-sm">
-                    This usually takes under two minutes. You can stay right here — it&apos;ll appear
-                    the moment it&apos;s ready.
-                  </p>
-                </div>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="mx-auto w-full max-w-2xl px-6 py-10">
+              <div className="flex items-center justify-between gap-4">
+                <p className="mono-label !text-primary">STEP 2 · YOUR VIDEOS</p>
+                <ProviderStatus />
               </div>
-            ) : videoUrl && !reshooting ? (
-              // Footage ready — big, front and centre
-              <div className="flex-1 min-h-0 flex flex-col p-6 gap-5">
-                <div className="text-center shrink-0">
-                  <p className="mono-label !text-primary">STEP 2 · YOUR HERO VIDEO</p>
-                  <h1 className="mt-1 text-2xl font-bold">Here&apos;s your footage — happy with it?</h1>
-                </div>
-                <div className="flex-1 min-h-0 flex items-center justify-center">
-                  <video
-                    src={videoUrl}
-                    controls
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="max-h-full max-w-full rounded-2xl border border-line shadow-[0_8px_24px_rgba(26,26,26,0.12)]"
+              <h1 className="mt-2 text-3xl font-bold tracking-tight">Direct your shots</h1>
+              <p className="mt-2 text-muted">
+                The first clip opens your site. Add more and Claude will place them down the page —
+                each one plays the way you set it: scrubbing with the scroll, or looping on its own.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {clips.map((clip, i) => (
+                  <ClipCard
+                    key={clip.id}
+                    clip={clip}
+                    index={i}
+                    draft={drafts[clip.id] ?? draftFor(clip)}
+                    onDraftChange={(patch) => setDraftFor(clip.id, patch)}
+                    onRename={(label) => updateClip(clip.id, { label })}
+                    onModeChange={(mode) => updateClip(clip.id, { mode })}
+                    onGenerate={() => generateClip(clip.id)}
+                    onSuggest={() => suggestShot(clip.id)}
+                    onRemove={() => removeClip(clip.id)}
+                    suggesting={suggestingClip === clip.id}
+                    busy={busyClip === clip.id || building}
+                    removable={clips.length > 1}
+                    costLabel={costLabel}
+                    isAdmin={isAdmin}
                   />
-                </div>
-                <div className="shrink-0 flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => {
-                      setError(null);
-                      setReshooting(true);
-                    }}
-                    className="btn-ghost !py-3 !px-5"
-                  >
-                    ↺ Reshoot / adjust the shot
-                  </button>
-                  <button onClick={() => goStep(3)} className="btn-primary !py-3 !px-6">
-                    Build my website →
-                  </button>
-                </div>
+                ))}
               </div>
-            ) : (
-              // Shot controls — describe / suggest / generate
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="mx-auto w-full max-w-2xl px-6 py-10">
-                  {reshooting && videoUrl && (
-                    <button
-                      onClick={() => setReshooting(false)}
-                      className="mono-label hover:!text-ink transition-colors mb-4"
-                    >
-                      ← Back to current footage
-                    </button>
+
+              {/* One slot at a time: the next square only appears when asked for. */}
+              {clips.length < MAX_VIDEOS_PER_PROJECT && (
+                <button
+                  onClick={addClip}
+                  disabled={addingClip}
+                  className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong px-4 py-4 text-sm font-medium text-muted hover:border-primary hover:text-primary transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  {addingClip ? "Adding…" : `Add ${ORDINALS[clips.length] ?? "another"} video`}
+                </button>
+              )}
+
+              {/* Once there's footage, more videos are asked for, not added. */}
+              {readyClips.length > 0 && (
+                <div className="mt-6 card !rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-line bg-bg">
+                    <p className="mono-label !text-primary">OR JUST DESCRIBE THE NEXT ONE</p>
+                    <p className="mt-1 text-sm text-muted leading-relaxed">
+                      {clips.length >= MAX_VIDEOS_PER_PROJECT
+                        ? `You've reached the ${MAX_VIDEOS_PER_PROJECT}-video limit for one production.`
+                        : "Rather than filling in a slot yourself: say what you want and I'll work out the shot and roll it — it'll appear above as it renders."}
+                    </p>
+                  </div>
+                  {clips.length < MAX_VIDEOS_PER_PROJECT && (
+                    <div className="h-[22rem]">
+                      <SiteChat
+                        messages={shotChat}
+                        draft={shotDraft}
+                        onDraftChange={setShotDraft}
+                        onSend={requestClip}
+                        busy={requestingClip}
+                        transcript=""
+                        placeholder="e.g. now a slow close-up of the beans being roasted"
+                        busyLabel="Working out the shot…"
+                        emptyState="Tell me what you want to see next — “a slow pan across the workshop”, “steam rising off a fresh cup, close up”. I'll write the shot, pick how it plays, and start rendering it."
+                        hint={
+                          isAdmin
+                            ? "Extra videos are free for admins. Enter to send, Shift+Enter for a new line."
+                            : `Each extra video costs ${extraClipCost} credits — 720p, 5 seconds. Enter to send.`
+                        }
+                      />
+                    </div>
                   )}
-                  <p className="mono-label !text-primary">STEP 2 · THE HERO VIDEO</p>
-                  <h1 className="mt-2 text-3xl font-bold tracking-tight">Direct the opening shot</h1>
-                  <p className="mt-2 text-muted">
-                    This is the video that opens your site. You&apos;ll preview it before building
-                    anything — reshoot as often as you like.
-                  </p>
-
-                  <div className="mt-8">
-                    <p className="mono-label mb-2">START FROM A SHOT STYLE</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {VIDEO_TEMPLATES.map((t) => (
-                        <button
-                          key={t.id}
-                          className={chipCls}
-                          title={t.hint}
-                          onClick={() => applyVideoTemplate(t.id)}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 space-y-3">
-                    <textarea
-                      className="field min-h-[130px] resize-y"
-                      placeholder="Describe the shot: subject, camera movement, lighting, mood… — or let us suggest one from your brief."
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                    />
-                    <button
-                      onClick={suggestShot}
-                      disabled={suggestingShot || building}
-                      className="btn-ghost w-full !text-xs"
-                    >
-                      {suggestingShot ? "Thinking up a shot…" : "✨ Suggest a shot from my brief · free"}
-                    </button>
-
-                    <div className="rounded-lg border border-line">
-                      <button
-                        type="button"
-                        onClick={() => setShowVideoAdvanced((v) => !v)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left"
-                      >
-                        <span className="mono-label">
-                          ADVANCED · {resolution} · {duration}s · {ratio}
-                        </span>
-                        <span className="text-faint text-xs">{showVideoAdvanced ? "▲" : "▾"}</span>
-                      </button>
-                      {showVideoAdvanced && (
-                        <div className="grid grid-cols-3 gap-2 px-3 pb-3">
-                          <div>
-                            <label className="mono-label block mb-1.5">QUALITY</label>
-                            <select
-                              className="field"
-                              value={resolution}
-                              onChange={(e) => setResolution(e.target.value as Resolution)}
-                            >
-                              <option value="720p">720p</option>
-                              <option value="1080p">1080p</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="mono-label block mb-1.5">LENGTH</label>
-                            <select
-                              className="field"
-                              value={duration}
-                              onChange={(e) => setDuration(Number(e.target.value) as Duration)}
-                            >
-                              <option value={5}>5 sec</option>
-                              <option value={10}>10 sec</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="mono-label block mb-1.5">SHAPE</label>
-                            <select
-                              className="field"
-                              value={ratio}
-                              onChange={(e) => setRatio(e.target.value as Ratio)}
-                            >
-                              <option value="16:9">Wide 16:9</option>
-                              <option value="21:9">Cinema 21:9</option>
-                              <option value="1:1">Square 1:1</option>
-                              <option value="9:16">Tall 9:16</option>
-                            </select>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={generateVideo}
-                      disabled={busyVideo || videoBusy || building}
-                      className="btn-primary w-full !py-3.5"
-                    >
-                      {videoUrl
-                        ? `Reshoot video · ${costLabel(vCost)}`
-                        : `Generate video · ${costLabel(vCost)}`}
-                    </button>
-                  </div>
                 </div>
+              )}
+
+              <div className="mt-8 flex items-center justify-between gap-3">
+                <p className="text-xs text-faint">
+                  {readyClips.length === 0
+                    ? "Generate at least one video to continue."
+                    : `${readyClips.length} of ${clips.length} ready.`}
+                </p>
+                <button
+                  onClick={() => goStep(3)}
+                  disabled={readyClips.length === 0}
+                  className="btn-primary !py-3 !px-6"
+                >
+                  Build my website →
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -837,113 +905,117 @@ export function Studio({
               <div className="flex-1 flex flex-col">
                 <div className="stream-bar" />
                 <div className="flex-1 flex flex-col items-center justify-center p-10 gap-6">
-                  <p className="mono-label flex items-center gap-2">
-                    <span className="rec-dot" /> CLAUDE IS WRITING YOUR SITE —{" "}
-                    {streamedChars.toLocaleString()} CHARACTERS
+                  {/* The character counter ticks constantly, so the live region
+                      wraps only the headline and the raw stream stays silent —
+                      otherwise a screen reader would never stop talking. */}
+                  <p className="mono-label flex items-center gap-2" role="status" aria-live="polite">
+                    <span className="rec-dot" aria-hidden /> CLAUDE IS WRITING YOUR SITE —{" "}
+                    <span aria-hidden>{streamedChars.toLocaleString()} CHARACTERS</span>
                   </p>
-                  <pre className="w-full max-w-2xl h-64 overflow-hidden card !rounded-lg p-4 text-[11px] leading-relaxed text-faint whitespace-pre-wrap">
+                  <pre
+                    aria-hidden
+                    className="w-full max-w-2xl h-64 overflow-hidden card !rounded-lg p-4 text-[11px] leading-relaxed text-faint whitespace-pre-wrap"
+                  >
                     {streamTail || "…"}
                   </pre>
                 </div>
               </div>
             ) : siteHtml ? (
-              // Site ready — full-screen browser preview
+              // Site ready — the real website above, the chat about it below
               <>
                 <div className="flex items-center justify-between px-5 py-2.5 border-b border-line bg-bg shrink-0">
                   <p className="mono-label flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary" aria-hidden /> LIVE PREVIEW
+                    <span className="w-2 h-2 rounded-full bg-primary" aria-hidden /> LIVE PREVIEW ·
+                    SCROLL IT
                   </p>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowChanges((v) => !v)}
-                      className="btn-ghost !py-1.5 !px-3 !text-xs"
-                    >
-                      {showChanges ? "Close changes" : "✎ Ask for changes"}
-                    </button>
                     <button onClick={openInNewTab} className="btn-ghost !py-1.5 !px-3 !text-xs">
                       Open in new tab ↗
                     </button>
                     <button
+                      onClick={() => runClaude()}
+                      disabled={editing || building || !siteBrief.trim()}
+                      className="btn-ghost !py-1.5 !px-3 !text-xs"
+                    >
+                      Start over
+                    </button>
+                    <button
                       onClick={downloadHtml}
                       disabled={downloading}
+                      className="btn-ghost !py-1.5 !px-3 !text-xs"
+                    >
+                      {downloading ? "Packaging…" : "⬇ Download"}
+                    </button>
+                    <button
+                      onClick={() => setDeployOpen(true)}
                       className="btn-primary !py-1.5 !px-3.5 !text-xs"
                     >
-                      {downloading ? "Packaging…" : "⬇ Download site"}
+                      {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
                     </button>
                   </div>
                 </div>
-                <iframe
-                  key={previewVersion}
-                  srcDoc={siteHtml}
-                  title="Site preview"
-                  className="flex-1 w-full bg-white min-h-0"
-                  sandbox="allow-scripts allow-same-origin"
-                />
-                {showChanges && (
-                  <div className="border-t border-line bg-bg p-4 shrink-0">
-                    <div className="mx-auto w-full max-w-3xl space-y-2">
-                      {/* Live narration — Claude working like Claude Code */}
-                      {(editing || editTranscript) && (
-                        <div
-                          ref={editScrollRef}
-                          className="max-h-40 overflow-y-auto rounded-lg border border-line bg-bg-raise p-3 text-[12px] leading-relaxed text-muted whitespace-pre-wrap"
-                        >
-                          {editTranscript || "…"}
-                          {editing && <span className="rec-dot ml-1 inline-block align-middle" />}
-                        </div>
-                      )}
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <textarea
-                          className="field flex-1 min-h-[52px] resize-y"
-                          placeholder="e.g. 'Make the palette darker and add a testimonials section', 'Fix the button contrast on mobile', or after a reshoot: 'Swap in the new video'"
-                          value={instruction}
-                          onChange={(e) => setInstruction(e.target.value)}
-                          disabled={editing}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) runEdit();
-                          }}
-                        />
-                        <div className="flex sm:flex-col gap-2 shrink-0">
-                          <button
-                            onClick={runEdit}
-                            disabled={editing || building || !instruction.trim()}
-                            className="btn-primary flex-1 !text-xs whitespace-nowrap"
-                          >
-                            {editing ? "Working…" : "Send change"}
-                          </button>
-                          <button
-                            onClick={() => runClaude("create")}
-                            disabled={editing || building || !siteBrief.trim()}
-                            className="btn-ghost flex-1 !text-xs whitespace-nowrap"
-                          >
-                            Start over
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-faint">
-                        {isAdmin
-                          ? "Edits run free for admins."
+
+                <div ref={splitRef} className="flex-1 min-h-0 flex flex-col">
+                  {/* The website itself — scrollable, exactly as visitors see it. */}
+                  <iframe
+                    key={previewVersion}
+                    srcDoc={siteHtml}
+                    title="Site preview"
+                    className="w-full bg-white shrink-0"
+                    style={{ height: `${previewPct}%` }}
+                    // allow-scripts only, deliberately WITHOUT allow-same-origin.
+                    // Granting both together defeats the sandbox: the frame would
+                    // share this origin, so generated markup could read the
+                    // Supabase session from storage and call our APIs as the user.
+                    // Opaque-origin still runs the scroll-scrub scripts and loads
+                    // the video fine. Matches the CSP on /showcase/[id].
+                    sandbox="allow-scripts"
+                  />
+
+                  {/* Drag to give the site more room, or the chat. */}
+                  <div
+                    onPointerDown={startDragSplit}
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize the preview"
+                    className="group h-2 shrink-0 cursor-row-resize bg-bg border-y border-line flex items-center justify-center touch-none"
+                  >
+                    <span className="h-0.5 w-10 rounded-full bg-line-strong group-hover:bg-primary transition-colors" />
+                  </div>
+
+                  {/* …and the conversation about it, directly underneath. */}
+                  <div className="flex-1 min-h-0">
+                    <SiteChat
+                      messages={chat}
+                      draft={draft}
+                      onDraftChange={setDraft}
+                      onSend={runEdit}
+                      busy={editing}
+                      transcript={editTranscript}
+                      hint={
+                        isAdmin
+                          ? "Edits run free for admins. Enter to send, Shift+Enter for a new line."
                           : lastEditCost !== null
                           ? `Last change cost ${lastEditCost} credits. Edits are billed by usage — small tweaks cost little, big redesigns cost more.`
-                          : "Edits are billed by usage — small tweaks cost little, big redesigns cost more. ⌘/Ctrl+Enter to send."}
-                      </p>
-                    </div>
+                          : "Edits are billed by usage — small tweaks cost little, big redesigns cost more. Enter to send, Shift+Enter for a new line."
+                      }
+                    />
                   </div>
-                )}
+                </div>
               </>
-            ) : !videoUrl ? (
+            ) : readyClips.length === 0 ? (
               // Guard — need footage first
               <div className="flex-1 flex flex-col items-center justify-center p-10 text-center gap-5">
                 <p className="text-6xl" aria-hidden>
                   🎬
                 </p>
-                <p className="text-2xl font-bold">Create your hero video first</p>
+                <p className="text-2xl font-bold">Create a video first</p>
                 <p className="text-muted max-w-sm">
                   Claude builds the whole site around your approved footage — so let&apos;s shoot that
                   first.
                 </p>
                 <button onClick={() => goStep(2)} className="btn-primary !py-3 !px-6">
-                  ← Back to the video
+                  ← Back to the videos
                 </button>
               </div>
             ) : (
@@ -953,63 +1025,33 @@ export function Studio({
                   <p className="mono-label !text-primary">STEP 3 · BUILD THE WEBSITE</p>
                   <h1 className="mt-2 text-3xl font-bold tracking-tight">Build your website</h1>
                   <p className="mt-2 text-muted">
-                    Claude writes the whole site around your approved footage and streams it live.
-                    You can ask for changes afterwards.
+                    Claude writes the whole site around your footage and streams it live. When
+                    it&apos;s done you&apos;ll see the real site here and can chat about changes
+                    underneath it.
                   </p>
 
-                  <div className="mt-8">
-                    <label className="mono-label block mb-2">HOW SHOULD THE VIDEO PLAY?</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(
-                        [
-                          { id: "loop", title: "Ambient loop", desc: "Plays continuously behind the hero" },
-                          { id: "scrub", title: "Scroll scrub", desc: "Plays forward as visitors scroll" },
-                        ] as const
-                      ).map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => setVideoMode(m.id)}
-                          className={`text-left rounded-lg border p-3 transition-colors ${
-                            videoMode === m.id
-                              ? "border-primary bg-primary-soft/40"
-                              : "border-line-strong hover:border-primary"
-                          }`}
-                        >
-                          <p
-                            className={`text-sm font-bold ${
-                              videoMode === m.id ? "text-primary-deep" : "text-ink"
-                            }`}
-                          >
-                            {m.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted leading-snug">{m.desc}</p>
-                        </button>
+                  <div className="mt-8 rounded-lg border border-line p-4">
+                    <p className="mono-label mb-2">GOING IN ({readyClips.length})</p>
+                    <ul className="space-y-1.5">
+                      {readyClips.map((c, i) => (
+                        <li key={c.id} className="flex items-center gap-2 text-sm">
+                          <span className="mono-label !text-primary shrink-0">
+                            {i === 0 ? "HERO" : `CLIP ${i + 1}`}
+                          </span>
+                          <span className="truncate flex-1">{c.label}</span>
+                          <span className="text-xs text-faint shrink-0">
+                            {c.mode === "scrub" ? "scrolls" : "loops"}
+                          </span>
+                        </li>
                       ))}
-                    </div>
-                    <p className="mt-2 text-xs text-muted leading-relaxed">
-                      {videoMode === "scrub" ? (
-                        <>
-                          <span className="font-bold text-ink">Scrubbing</span> means your scroll wheel
-                          becomes the play button: scroll down and the video moves forward frame by
-                          frame, scroll back up and it rewinds. It stops wherever you stop — like
-                          dragging the slider on a video player. Great for reveals and product shots.
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-bold text-ink">Ambient loop</span> just plays on repeat
-                          on its own, like a moving background. Prefer{" "}
-                          <button
-                            type="button"
-                            onClick={() => setVideoMode("scrub")}
-                            className="underline text-primary-deep"
-                          >
-                            scroll scrub
-                          </button>{" "}
-                          if you want the visitor&apos;s scrolling to drive the video forward and
-                          backward, like dragging the slider on a video player.
-                        </>
-                      )}
-                    </p>
+                    </ul>
+                    {clips.length > readyClips.length && (
+                      <p className="mt-2 text-xs text-faint">
+                        {clips.length - readyClips.length} clip
+                        {clips.length - readyClips.length === 1 ? "" : "s"} still unshot — they
+                        won&apos;t be included.
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-6 rounded-lg border border-line">
@@ -1025,17 +1067,21 @@ export function Studio({
                       <div className="px-3 pb-3 space-y-4">
                         <div>
                           <label className="mono-label block mb-1.5">WHO WRITES YOUR SITE?</label>
-                          <select
-                            className="field"
+                          <Select
                             value={model}
-                            onChange={(e) => setModel(e.target.value as ModelId)}
-                          >
-                            {(Object.keys(MODELS) as ModelId[]).map((id) => (
-                              <option key={id} value={id}>
-                                {MODELS[id].label} — {MODELS[id].blurb} · {MODELS[id].credits} credits
-                              </option>
-                            ))}
-                          </select>
+                            onChange={setModel}
+                            ariaLabel="Who writes your site"
+                            groups={[
+                              {
+                                options: (Object.keys(MODELS) as ModelId[]).map((id) => ({
+                                  value: id,
+                                  label: MODELS[id].label,
+                                  description: MODELS[id].blurb,
+                                  meta: `${MODELS[id].credits} cr`,
+                                })),
+                              },
+                            ]}
+                          />
                           <p className="mt-1.5 text-xs text-faint">
                             Better models design better sites and cost more credits. Opus is the sweet
                             spot.
@@ -1046,8 +1092,8 @@ export function Studio({
                   </div>
 
                   <button
-                    onClick={() => runClaude("create")}
-                    disabled={building || !videoUrl || !siteBrief.trim()}
+                    onClick={() => runClaude()}
+                    disabled={building || readyClips.length === 0 || !siteBrief.trim()}
                     className="btn-primary w-full !py-4 mt-6"
                   >
                     Build my website · {costLabel(claudeCost)}
@@ -1061,6 +1107,17 @@ export function Studio({
           </div>
         )}
       </div>
+
+      <DeployPanel
+        open={deployOpen}
+        onClose={() => setDeployOpen(false)}
+        projectId={project.id}
+        projectName={name}
+        plan={plan}
+        liveUrl={liveUrl}
+        supabaseRef={project.supabase_project_ref}
+        onLive={setLiveUrl}
+      />
     </div>
   );
 }

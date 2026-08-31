@@ -25,7 +25,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <main className="flex-1 px-6 md:px-10 py-10 max-w-6xl mx-auto w-full">
+      <main id="main" className="flex-1 px-6 md:px-10 py-10 max-w-6xl mx-auto w-full">
         <p className="mono-label">YOUR ACCOUNT</p>
         <h1 className="mt-2 text-4xl md:text-5xl font-medium tracking-tight">Account</h1>
 

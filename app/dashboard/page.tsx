@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { AccountBadge } from "@/components/AccountBadge";
+import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { NewProjectButton, SignOutButton } from "@/components/DashboardActions";
@@ -6,7 +8,7 @@ import { PortalButton } from "@/components/CheckoutButton";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceReel } from "@/components/ReferenceReel";
 
-export const metadata = { title: "Dashboard — Reelform" };
+export const metadata = { title: "Dashboard", ...PRIVATE_PAGE };
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   none: { label: "Pre-production", cls: "bg-bg-raise text-faint" },
@@ -50,14 +52,12 @@ export default async function DashboardPage() {
           <Link href="/pricing" className="text-sm text-muted hover:text-ink transition-colors">
             Pricing
           </Link>
-          <Link href="/account" className="text-sm text-muted hover:text-ink transition-colors">
-            Account
-          </Link>
+          <AccountBadge />
           <SignOutButton />
         </nav>
       </header>
 
-      <main className="flex-1 px-6 md:px-10 py-10 max-w-6xl mx-auto w-full">
+      <main id="main" className="flex-1 px-6 md:px-10 py-10 max-w-6xl mx-auto w-full">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="mono-label">YOUR STUDIO</p>

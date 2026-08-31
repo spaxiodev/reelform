@@ -1,7 +1,13 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
-export const metadata = { title: "Privacy Policy — Reelform" };
+export const metadata = pageMeta({
+  title: "Privacy Policy",
+  description:
+    "What data Reelform collects, how it is used, who processes it, and how to exercise your rights over it.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (
@@ -64,7 +70,7 @@ export default function PrivacyPage() {
             API to build your websites;
           </li>
           <li>
-            <strong className="text-ink">Seedance (BytePlus)</strong> — your video prompts are sent
+            <strong className="text-ink">Higgsfield</strong> — your video prompts are sent
             to generate footage;
           </li>
           <li>

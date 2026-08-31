@@ -1,7 +1,13 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
-export const metadata = { title: "Refund Policy — Reelform" };
+export const metadata = pageMeta({
+  title: "Refund Policy",
+  description:
+    "When Reelform refunds credits and payments, including automatic refunds for failed video renders and site builds.",
+  path: "/refunds",
+});
 
 export default function RefundsPage() {
   return (

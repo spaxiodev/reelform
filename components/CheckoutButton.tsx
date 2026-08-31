@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/Toaster";
+import { trackEvent } from "@/lib/analytics";
 
 export function CheckoutButton({
   kind,
@@ -32,6 +33,9 @@ export function CheckoutButton({
       }
       const data = await res.json();
       if (data.url) {
+        // Fires before the redirect — Stripe completion is confirmed
+        // server-side by the webhook, not here.
+        trackEvent("checkout_started", { kind, plan: id });
         location.href = data.url;
         return;
       }
@@ -58,6 +62,7 @@ export function PortalButton({ className, children }: { className?: string; chil
       const res = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await res.json();
       if (data.url) {
+        trackEvent("portal_opened");
         location.href = data.url;
         return;
       }

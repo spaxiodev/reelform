@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 // Shared marketing-page header. Reads the session server-side so a signed-in
@@ -26,11 +27,9 @@ export async function SiteHeader() {
         </Link>
         {user ? (
           <>
-            <Link href="/account" className="text-sm text-muted hover:text-ink transition-colors">
-              Account
-            </Link>
-            <Link href="/dashboard" className="btn-primary !py-2 !px-4 text-sm">
-              Open studio
+            <AccountBadge />
+            <Link href="/create" className="btn-primary !py-2 !px-4 text-sm">
+              Start building
             </Link>
           </>
         ) : (
@@ -38,8 +37,8 @@ export async function SiteHeader() {
             <Link href="/login" className="text-sm text-muted hover:text-ink transition-colors">
               Sign in
             </Link>
-            <Link href="/login?mode=signup" className="btn-primary !py-2 !px-4 text-sm">
-              Start free
+            <Link href="/create" className="btn-primary !py-2 !px-4 text-sm">
+              Start building
             </Link>
           </>
         )}

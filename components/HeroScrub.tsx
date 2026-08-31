@@ -23,9 +23,23 @@ export function HeroScrub() {
     const text = textRef.current;
     if (!wrap || !video || !text) return;
 
+    // Scroll-driven scrubbing and the parallax text exit are both motion the
+    // visitor didn't ask for. Under prefers-reduced-motion we hold a single
+    // representative frame and fade the copy without moving, scaling or
+    // blurring it — the hero still reads, it just stops animating.
+    const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const readDuration = () => {
       if (Number.isFinite(video.duration) && video.duration > 0) {
         durationRef.current = video.duration;
+        // Park on a frame with the subject in it rather than a black first frame.
+        if (stillOnly) {
+          try {
+            video.currentTime = video.duration * 0.25;
+          } catch {
+            /* seek unsupported before metadata settles — harmless */
+          }
+        }
       }
     };
     readDuration();
@@ -62,7 +76,7 @@ export function HeroScrub() {
       const progress = total > 0 ? Math.min(Math.max(scrolled / total, 0), 1) : 0;
 
       const d = durationRef.current;
-      if (d) {
+      if (d && !stillOnly) {
         targetTime = progress * (d - 0.05);
         applySeek();
       }
@@ -70,8 +84,10 @@ export function HeroScrub() {
       // Text leaves between 40% and 72% of the hero scroll.
       const exit = Math.min(Math.max((progress - 0.4) / 0.32, 0), 1);
       text.style.opacity = String(1 - exit);
-      text.style.transform = `translateY(${-exit * 48}px) scale(${1 - exit * 0.04})`;
-      text.style.filter = `blur(${exit * 5}px)`;
+      if (!stillOnly) {
+        text.style.transform = `translateY(${-exit * 48}px) scale(${1 - exit * 0.04})`;
+        text.style.filter = `blur(${exit * 5}px)`;
+      }
       text.style.pointerEvents = exit > 0.6 ? "none" : "auto";
 
       if (cueRef.current) {
@@ -138,10 +154,10 @@ export function HeroScrub() {
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/login?mode=signup"
+              href="/create"
               className="rounded-full bg-white px-7 py-3.5 text-base font-semibold text-ink shadow-[0_8px_24px_rgba(0,0,0,0.28)] hover:bg-white/90 transition-colors"
             >
-              Roll camera — 150 free credits
+              Start building — first site free
             </Link>
             <Link
               href="/pricing"
