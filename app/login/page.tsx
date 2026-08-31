@@ -7,6 +7,15 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { SiteFooter } from "@/components/SiteFooter";
 import { trackEvent } from "@/lib/analytics";
 
+// Reasons /api/auth/callback can bounce someone back here. Anything not
+// listed is shown with its raw code, so a new provider error is diagnosable
+// from the URL instead of hiding behind one generic message.
+const AUTH_ERRORS: Record<string, string> = {
+  no_code: "Sign-in link was invalid or expired. Try again.",
+  exchange_failed: "We could not finish signing you in. Try again in this same browser tab.",
+  access_denied: "You cancelled the Google sign-in. Nothing was changed.",
+};
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,9 +28,11 @@ function LoginForm() {
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error") ? "Sign-in link was invalid or expired. Try again." : null
-  );
+  const [error, setError] = useState<string | null>(() => {
+    const reason = searchParams.get("error");
+    if (!reason) return null;
+    return AUTH_ERRORS[reason] ?? `Sign-in failed (${reason}). Try again.`;
+  });
 
   const next = searchParams.get("next") ?? "/dashboard";
 
