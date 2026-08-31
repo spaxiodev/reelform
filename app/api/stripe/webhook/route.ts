@@ -1,12 +1,14 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 import { getStripe, planForPriceId } from "@/lib/stripe";
+import { rolloverCap } from "@/lib/pricing";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { grantCredits } from "@/lib/credits";
+import { grantCredits, grantSubscriptionCredits } from "@/lib/credits";
 
 // Stripe -> Reelform fulfillment.
 //  - checkout.session.completed (mode=payment): credit top-up
-//  - invoice.paid: subscription created or renewed -> set plan + grant monthly credits
+//  - invoice.paid: subscription created or renewed -> set plan + grant monthly
+//    credits, capped so unused ones cannot accrue forever
 //  - customer.subscription.updated/deleted: keep plan status in sync
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
@@ -65,7 +67,13 @@ export async function POST(request: NextRequest) {
         .from("profiles")
         .update({ plan: plan.id, plan_status: "active" })
         .eq("id", userId);
-      await grantCredits(userId, plan.creditsPerMonth, "subscription", invoice.id ?? undefined);
+      // Capped, unlike a top-up: unused plan credits roll over only so far.
+      await grantSubscriptionCredits(
+        userId,
+        plan.creditsPerMonth,
+        rolloverCap(plan),
+        invoice.id ?? undefined
+      );
       break;
     }
 

@@ -1,4 +1,12 @@
-import { PLANS, TOPUPS, MODELS, videoCost, DEPLOY_SITE_LIMIT } from "@/lib/pricing";
+import {
+  PLANS,
+  TOPUPS,
+  MODELS,
+  estimateBuildCredits,
+  videoCost,
+  DEPLOY_SITE_LIMIT,
+  type ModelId,
+} from "@/lib/pricing";
 import { VIDEO_MODELS, type VideoModelId } from "@/lib/higgsfield";
 import { pageMeta, pricingJsonLd, JsonLd } from "@/lib/seo";
 import { CheckoutButton } from "@/components/CheckoutButton";
@@ -140,7 +148,9 @@ export default function PricingPage() {
                     <span className="text-muted">
                       {m.label} <span className="text-faint">· {m.blurb}</span>
                     </span>
-                    <span className="font-mono text-primary">{m.credits} cr</span>
+                    <span className="font-mono text-primary">
+                      up to {estimateBuildCredits(id as ModelId).hold} cr
+                    </span>
                   </li>
                 ))}
               </ul>

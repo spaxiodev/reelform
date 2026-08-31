@@ -1,4 +1,5 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { ROLLOVER_MONTHS } from "@/lib/pricing";
 import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
@@ -49,6 +50,12 @@ export default function TermsPage() {
             period.
           </li>
           <li>Top-up credit packs are one-time purchases and never expire.</li>
+          <li>
+            Subscription credits roll over for up to {ROLLOVER_MONTHS} months. Your plan balance is
+            capped at {ROLLOVER_MONTHS} months&rsquo; worth of credits, so you can miss a month
+            without losing anything; credits above that cap are not carried past a renewal. Plan
+            credits are always spent before top-up credits.
+          </li>
           <li>
             Credits have no cash value outside the Service and are non-transferable. Refunds are
             handled per our{" "}

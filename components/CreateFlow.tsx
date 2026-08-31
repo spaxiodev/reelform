@@ -40,9 +40,12 @@ function nameFrom(brief: string): string {
 export function CreateFlow({
   isFirstBuild,
   isAdmin = false,
+  pinnedShot = false,
 }: {
   isFirstBuild: boolean;
   isAdmin?: boolean;
+  /** The free hero shot runs on a fixed preset; see ShotControls. */
+  pinnedShot?: boolean;
 }) {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>("format");
@@ -314,8 +317,9 @@ export function CreateFlow({
         value={shot}
         onChange={(patch) => setShot((s) => ({ ...s, ...patch }))}
         isAdmin={isAdmin}
+        pinned={pinnedShot}
         costLabel={(credits) =>
-          isFirstBuild ? `${credits} credits, free on your first build` : `${credits} credits`
+          pinnedShot ? `Free · normally ${credits} credits` : `${credits} credits`
         }
       />
     </form>

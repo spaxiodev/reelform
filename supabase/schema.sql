@@ -32,6 +32,16 @@ alter table public.profiles add column if not exists created_at timestamptz not 
 -- Every account gets one complete website free: one hero video and one site
 -- build. Both are one-shot flags rather than a credit balance, so the free tier
 -- can't be topped up — regenerating or editing needs a subscription.
+-- How much of `credits` came from a subscription and is therefore subject to
+-- the rollover cap. Invariant: 0 <= subscription_credits <= credits. See
+-- migrations/20260831_credit_rollover.sql for why the balance is split by
+-- origin rather than into two separate wallets.
+alter table public.profiles add column if not exists subscription_credits integer not null default 0;
+
+alter table public.profiles drop constraint if exists profiles_subscription_credits_bounds;
+alter table public.profiles add constraint profiles_subscription_credits_bounds
+  check (subscription_credits >= 0 and subscription_credits <= credits);
+
 alter table public.profiles add column if not exists free_video_used boolean not null default false;
 alter table public.profiles add column if not exists free_site_used boolean not null default false;
 
@@ -198,7 +208,7 @@ create table if not exists public.credit_ledger (
   id bigint generated always as identity primary key,
   user_id uuid not null references public.profiles (id) on delete cascade,
   delta integer not null,
-  reason text not null,                        -- signup_bonus | video_generation | site_generation | refund | subscription | topup
+  reason text not null,                        -- signup_bonus | video_generation | site_generation | site_edit | refund | subscription | rollover_capped | topup
   ref text,
   created_at timestamptz not null default now()
 );
@@ -332,8 +342,13 @@ security definer set search_path = public
 as $$
 declare updated integer;
 begin
+  -- Expiring credits are spent before permanent ones: better for the customer,
+  -- and it keeps the carried liability as small as possible. Right-hand column
+  -- references in an UPDATE ... SET read the OLD row, so both expressions here
+  -- see the same pre-update `subscription_credits`.
   update public.profiles
-     set credits = credits - p_amount
+     set credits = credits - p_amount,
+         subscription_credits = subscription_credits - least(subscription_credits, p_amount)
    where id = p_user and credits >= p_amount;
   get diagnostics updated = row_count;
   if updated = 0 then
@@ -400,9 +415,56 @@ begin
 end;
 $$;
 
+-- ── Monthly subscription grant, capped ───────────────────────────────
+-- Unused plan credits roll over, but the expiring balance is capped at `p_cap`
+-- (one extra month's grant, see ROLLOVER_MONTHS in lib/pricing.ts). Anything
+-- above it is forfeited at renewal and recorded, so a balance that stops
+-- growing is explainable rather than looking like a missing grant.
+create or replace function public.grant_subscription_credits(
+  p_user uuid,
+  p_amount integer,
+  p_cap integer,
+  p_ref text default null
+)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_before integer;
+  v_after integer;
+  v_added integer;
+begin
+  select subscription_credits into v_before from public.profiles where id = p_user for update;
+  if v_before is null then
+    return;
+  end if;
+
+  -- greatest(p_cap, v_before) so a cap that drops (a downgrade) never claws
+  -- back credits the customer has already been granted.
+  v_after := least(v_before + p_amount, greatest(p_cap, v_before));
+  v_added := v_after - v_before;
+
+  if v_added > 0 then
+    update public.profiles
+       set credits = credits + v_added,
+           subscription_credits = v_after
+     where id = p_user;
+    insert into public.credit_ledger (user_id, delta, reason, ref)
+    values (p_user, v_added, 'subscription', p_ref);
+  end if;
+
+  if v_added < p_amount then
+    insert into public.credit_ledger (user_id, delta, reason, ref)
+    values (p_user, 0, 'rollover_capped', p_ref);
+  end if;
+end;
+$$;
+
 -- Only the service role may call the credit functions.
 revoke execute on function public.spend_credits(uuid, integer, text, text) from public, anon, authenticated;
 revoke execute on function public.grant_credits(uuid, integer, text, text) from public, anon, authenticated;
+revoke execute on function public.grant_subscription_credits(uuid, integer, integer, text) from public, anon, authenticated;
 
 -- ── Rate limiting ────────────────────────────────────────────────────
 -- Bounds how fast one account can hit the endpoints that cost us money at a

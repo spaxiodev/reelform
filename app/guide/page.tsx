@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LegalShell, LegalSection } from "@/components/LegalShell";
 import { pageMeta } from "@/lib/seo";
-import { MODELS, videoCost } from "@/lib/pricing";
+import { MODELS, estimateBuildCredits, videoCost, type ModelId } from "@/lib/pricing";
 import { DEFAULT_VIDEO_MODEL } from "@/lib/higgsfield";
 import { CONTACT_EMAIL } from "@/lib/contact";
 
@@ -126,7 +126,9 @@ export default function GuidePage() {
                 Site build · {m.label}{" "}
                 <span className="text-faint">· {m.blurb}</span>
               </span>
-              <span className="font-mono text-primary">{m.credits} cr</span>
+              <span className="font-mono text-primary">
+                up to {estimateBuildCredits(id as ModelId).hold} cr
+              </span>
             </li>
           ))}
         </ul>

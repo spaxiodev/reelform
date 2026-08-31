@@ -3,6 +3,7 @@ import { PRIVATE_PAGE } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { LEDGER_REASONS, ledgerLabel } from "@/lib/ledger";
+import { ROLLOVER_MONTHS } from "@/lib/pricing";
 
 export const metadata = { title: "Credits & activity", ...PRIVATE_PAGE };
 
@@ -31,7 +32,7 @@ export default async function CreditsPage({
   if (filter) query = query.eq("reason", filter);
 
   const [{ data: profile }, { data: ledger, count }, { data: allDeltas }] = await Promise.all([
-    supabase.from("profiles").select("credits").eq("id", user.id).single(),
+    supabase.from("profiles").select("credits, subscription_credits").eq("id", user.id).single(),
     query,
     supabase.from("credit_ledger").select("delta"),
   ]);
@@ -39,6 +40,7 @@ export default async function CreditsPage({
   const earned = allDeltas?.filter((l) => l.delta > 0).reduce((s, l) => s + l.delta, 0) ?? 0;
   const spent = allDeltas?.filter((l) => l.delta < 0).reduce((s, l) => s - l.delta, 0) ?? 0;
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const expiring = profile?.subscription_credits ?? 0;
 
   const pageHref = (p: number) =>
     `/account/credits?page=${p}${filter ? `&type=${filter}` : ""}`;
@@ -52,6 +54,14 @@ export default async function CreditsPage({
           <p className="mt-2 text-3xl font-medium tabular-nums">
             {profile?.credits?.toLocaleString() ?? 0}
           </p>
+          {/* Plan credits roll over for one month; top-ups never expire. Worth
+              stating alongside the balance rather than only in the terms. */}
+          {expiring > 0 && (
+            <p className="mt-1 text-sm text-faint">
+              {expiring.toLocaleString()} from your plan, spent first and kept for up to{" "}
+              {ROLLOVER_MONTHS} months
+            </p>
+          )}
           <Link href="/pricing" className="mt-1 inline-block text-sm font-medium text-primary hover:text-primary-deep">
             Top up →
           </Link>

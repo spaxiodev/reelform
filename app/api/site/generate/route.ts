@@ -5,7 +5,14 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { spendCredits, grantCredits } from "@/lib/credits";
 import { isAdminUser } from "@/lib/admin";
 import { generateSite, buildInitialBrief, buildEditBrief } from "@/lib/claude";
-import { MODELS, type ModelId } from "@/lib/pricing";
+import {
+  FREE_TIER,
+  estimateBuildCredits,
+  meteredCredits,
+  EDIT_MIN_CREDITS,
+  resolveModel,
+  type ModelId,
+} from "@/lib/pricing";
 import { listVideos, readyVideos } from "@/lib/videos";
 import { authorizeSiteBuild, releaseFree } from "@/lib/entitlements";
 
@@ -40,8 +47,9 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   const body = (await request.json()) as Body;
-  const model = MODELS[body.model] ? body.model : null;
-  if (!model) return NextResponse.json({ error: "Unknown model" }, { status: 400 });
+  // Retired ids resolve to their successor rather than erroring: a stale
+  // client or an old project row should not fail a build.
+  const model = resolveModel(body.model);
 
   const { data: project } = await supabase
     .from("projects")
@@ -83,26 +91,43 @@ export async function POST(request: NextRequest) {
   // The free build covers one *create*; edits are subscribers-only.
   const isAdmin = isAdminUser(user.id);
   let freeBuild = false;
-  let cost = 0;
+  let hold = 0;
+  // The model and output ceiling actually used. A free build is pinned to the
+  // cheap end regardless of what the client asked for: the picker is a paid
+  // feature, and an unpinned free build could run Opus to the full cap.
+  const quote = estimateBuildCredits(model);
+  let runModel: ModelId = model;
+  let outputBudget = quote.outputBudget;
+
   if (!isAdmin) {
     const grant = await authorizeSiteBuild(supabase, user.id, body.mode === "edit" ? "edit" : "create");
     if (!grant.ok) {
       return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
     }
     freeBuild = grant.billing === "free";
-    if (!freeBuild) {
-      cost = MODELS[model].credits;
-      const ok = await spendCredits(user.id, cost, "site_generation", body.projectId);
+    if (freeBuild) {
+      runModel = FREE_TIER.siteModel;
+      outputBudget = FREE_TIER.siteOutputBudget;
+    } else {
+      hold = quote.hold;
+      const ok = await spendCredits(user.id, hold, "site_generation", body.projectId);
       if (!ok) {
-        return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+        return NextResponse.json({ error: "insufficient_credits", cost: hold }, { status: 402 });
       }
     }
   }
 
-  // Undoes whichever form the charge took, for the two failure paths below.
-  const refund = async () => {
+  // A build that produced nothing usable shouldn't burn the one free site.
+  const refundFree = async () => {
     if (freeBuild) await releaseFree(user.id, "site");
-    else if (!isAdmin) await grantCredits(user.id, cost, "refund", body.projectId);
+  };
+
+  // Full undo, for the hard-failure path where nothing was produced at all.
+  const refund = async () => {
+    await refundFree();
+    if (!freeBuild && !isAdmin && hold > 0) {
+      await grantCredits(user.id, hold, "refund", body.projectId);
+    }
   };
 
   const admin = createSupabaseAdmin();
@@ -124,19 +149,37 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const result = await generateSite({
-          model,
+          model: runModel,
           brief,
+          outputBudget,
           onText: (delta) => controller.enqueue(encoder.encode(delta)),
         });
 
+        // Give back everything the build did not spend. The hold is priced at
+        // the output ceiling, so this only ever refunds.
+        const settle = async () => {
+          if (isAdmin || freeBuild || hold <= 0) return;
+          const actual = Math.max(EDIT_MIN_CREDITS, meteredCredits(runModel, result.usage));
+          if (actual < hold) {
+            await grantCredits(user.id, hold - actual, "refund", body.projectId).catch(() => {});
+          }
+          return actual;
+        };
+
         if (result.refused || !result.html.trim()) {
-          await refund();
+          // A refusal still burned tokens at the provider, so it settles to the
+          // real usage rather than refunding in full, otherwise a loop of
+          // deliberately-refused briefs is free provider spend on our account.
+          await settle();
+          await refundFree();
           controller.enqueue(
-            encoder.encode(`${ERROR_SENTINEL}The model declined this request. You have not been charged, so try rephrasing.`)
+            encoder.encode(`${ERROR_SENTINEL}The model declined this request. You were only charged for what it used, so try rephrasing.`)
           );
           controller.close();
           return;
         }
+
+        await settle();
 
         await admin
           .from("projects")

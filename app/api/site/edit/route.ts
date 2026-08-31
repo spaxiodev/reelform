@@ -6,7 +6,14 @@ import { spendCredits, grantCredits } from "@/lib/credits";
 import { isAdminUser } from "@/lib/admin";
 import { authorizeSiteBuild } from "@/lib/entitlements";
 import { editSite } from "@/lib/claude";
-import { MODELS, meteredCredits, estimateEditCredits, EDIT_MIN_CREDITS, type ModelId } from "@/lib/pricing";
+import {
+  meteredCredits,
+  estimateEditCredits,
+  EDIT_MIN_CREDITS,
+  resolveModel,
+  type ModelId,
+  type TokenUsage,
+} from "@/lib/pricing";
 import { listVideos, readyVideos } from "@/lib/videos";
 
 // Agentic, Claude-Code-style edits. Streams newline-delimited JSON events:
@@ -37,8 +44,9 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   const body = (await request.json()) as Body;
-  const model = MODELS[body.model] ? body.model : null;
-  if (!model) return NextResponse.json({ error: "Unknown model" }, { status: 400 });
+  // Retired ids resolve to their successor rather than erroring: a stale
+  // client or an old project row should not fail a build.
+  const model = resolveModel(body.model);
   if (!body.instruction?.trim()) {
     return NextResponse.json({ error: "Describe the change first" }, { status: 400 });
   }
@@ -96,9 +104,30 @@ export async function POST(request: NextRequest) {
   const send = (controller: ReadableStreamDefaultController<Uint8Array>, obj: unknown) =>
     controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
-  // Return the full hold if the edit produced nothing billable/usable.
+  // Return the full hold. Only for the hard-failure path, where the request
+  // never reached the provider and so cost nothing.
   const refundHold = async () => {
     if (!isAdmin && hold > 0) await grantCredits(user.id, hold, "refund", body.projectId).catch(() => {});
+  };
+
+  /**
+   * Settle the hold against what the turn really spent, and return the charge.
+   *
+   * An edit that refuses or changes nothing still ran at the provider and still
+   * cost us input and output tokens. Refunding those in full made a
+   * no-op instruction free to issue, and the rate limiter allows 120 an hour,
+   * which on a large site is real money per account per hour. The user pays
+   * only for what was used, which for a genuine no-op is the minimum charge.
+   */
+  const settleHold = async (usage: TokenUsage): Promise<number> => {
+    if (isAdmin) return 0;
+    const actual = Math.max(EDIT_MIN_CREDITS, meteredCredits(model, usage));
+    if (actual < hold) {
+      await grantCredits(user.id, hold - actual, "refund", body.projectId).catch(() => {});
+    } else if (actual > hold) {
+      await spendCredits(user.id, actual - hold, "site_edit", body.projectId).catch(() => {});
+    }
+    return actual;
   };
 
   const stream = new ReadableStream<Uint8Array>({
@@ -116,37 +145,27 @@ export async function POST(request: NextRequest) {
         });
 
         if (result.refused) {
-          await refundHold();
+          const spent = await settleHold(result.usage);
           send(controller, {
             type: "error",
-            message: "The model declined this request. Credits were refunded, so try rephrasing.",
+            message: `The model declined this request. You were charged ${spent} credits for what it used, so try rephrasing.`,
           });
           controller.close();
           return;
         }
 
         if (!result.changed || !result.html.trim()) {
-          await refundHold();
+          const spent = await settleHold(result.usage);
           send(controller, {
             type: "error",
-            message: "No change was made. Credits were refunded, so try being more specific.",
+            message: `No change was made. You were charged ${spent} credits for the attempt, so try being more specific.`,
           });
           controller.close();
           return;
         }
 
         // Reconcile the hold against the real usage-based charge.
-        let charged = 0;
-        if (!isAdmin) {
-          const actual = Math.max(EDIT_MIN_CREDITS, meteredCredits(model, result.usage));
-          charged = actual;
-          if (actual < hold) {
-            await grantCredits(user.id, hold - actual, "refund", body.projectId).catch(() => {});
-          } else if (actual > hold) {
-            // Rare (the hold over-estimates); take the small remainder best-effort.
-            await spendCredits(user.id, actual - hold, "site_edit", body.projectId).catch(() => {});
-          }
-        }
+        const charged = await settleHold(result.usage);
 
         await admin
           .from("projects")

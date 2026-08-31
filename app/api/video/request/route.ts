@@ -58,7 +58,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Plan first: a failed plan costs the user nothing.
+  // Authorize before planning. `planClip` is a real Anthropic call, so running
+  // it ahead of the entitlement check meant every denied request still cost us
+  // a generation, and the rate limiter allows 40 an hour per account.
+  const isAdmin = isAdminUser(user.id);
+  let freeShot = false;
+  let cost = 0;
+  if (!isAdmin) {
+    const grant = await authorizeVideo(supabase, user.id);
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
+    }
+    freeShot = grant.billing === "free";
+    if (!freeShot) {
+      cost = videoCost(DEFAULT_VIDEO_MODEL, RESOLUTION, DURATION);
+      const ok = await spendCredits(user.id, cost, "video_generation", project.id);
+      if (!ok) return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
+    }
+  }
+
+  // Undoes whichever form the charge took. Planning now happens *after* the
+  // charge, so a plan that fails has to hand it back.
+  const undoCharge = async () => {
+    if (freeShot) await releaseFree(user.id, "video");
+    else if (!isAdmin && cost > 0) {
+      await grantCredits(user.id, cost, "refund", project.id).catch(() => {});
+    }
+  };
+
   let plan;
   try {
     plan = await planClip({
@@ -74,26 +101,11 @@ export async function POST(request: NextRequest) {
     plan = null;
   }
   if (!plan) {
+    await undoCharge();
     return NextResponse.json(
       { error: "Could not work out that shot. Try describing it a different way." },
       { status: 502 }
     );
-  }
-
-  const isAdmin = isAdminUser(user.id);
-  let freeShot = false;
-  let cost = 0;
-  if (!isAdmin) {
-    const grant = await authorizeVideo(supabase, user.id);
-    if (!grant.ok) {
-      return NextResponse.json({ error: grant.reason, message: grant.message }, { status: 402 });
-    }
-    freeShot = grant.billing === "free";
-    if (!freeShot) {
-      cost = videoCost(DEFAULT_VIDEO_MODEL, RESOLUTION, DURATION);
-      const ok = await spendCredits(user.id, cost, "video_generation", project.id);
-      if (!ok) return NextResponse.json({ error: "insufficient_credits", cost }, { status: 402 });
-    }
   }
 
   // Match the hero's framing so the clips cut together.
@@ -147,8 +159,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ video, reply: plan.reply, cost });
   } catch (err) {
     // Nothing was queued, give the credits back.
-    if (freeShot) await releaseFree(user.id, "video");
-    else if (!isAdmin) await grantCredits(user.id, cost, "refund", project.id);
+    await undoCharge();
     const message = err instanceof Error ? err.message : "Video generation failed";
     return NextResponse.json({ error: message }, { status: 502 });
   }

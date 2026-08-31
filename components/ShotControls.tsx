@@ -8,7 +8,7 @@ import {
   type Resolution,
   type Ratio,
 } from "@/lib/higgsfield";
-import { videoCost, VIDEO_MODEL_USD_PER_SECOND } from "@/lib/pricing";
+import { videoCost, VIDEO_MODEL_USD_PER_SECOND, FREE_TIER } from "@/lib/pricing";
 import { Select, type SelectOption } from "@/components/ui/Select";
 
 export interface ShotSettings {
@@ -55,6 +55,7 @@ export function ShotControls({
   showRatio = false,
   costLabel,
   isAdmin = false,
+  pinned = false,
   className = "",
 }: {
   value: ShotSettings;
@@ -69,6 +70,12 @@ export function ShotControls({
    * try it.
    */
   isAdmin?: boolean;
+  /**
+   * The free hero shot runs on a fixed preset (see FREE_TIER) whatever the
+   * client sends, so on a free account these controls are shown snapped to it
+   * and locked. Left live they'd be a picker that silently does nothing.
+   */
+  pinned?: boolean;
   className?: string;
 }) {
   const [available, setAvailable] = useState<Record<string, boolean>>({});
@@ -80,6 +87,24 @@ export function ShotControls({
       alive = false;
     };
   }, []);
+
+  // Snap the parent's state to the preset so what is submitted matches what
+  // the server will shoot, and so the quoted price is the real one.
+  useEffect(() => {
+    if (!pinned) return;
+    if (
+      value.model === FREE_TIER.video.model &&
+      value.resolution === FREE_TIER.video.resolution &&
+      value.duration === FREE_TIER.video.duration
+    ) {
+      return;
+    }
+    onChange({
+      model: FREE_TIER.video.model,
+      resolution: FREE_TIER.video.resolution,
+      duration: FREE_TIER.video.duration,
+    });
+  }, [pinned, value.model, value.resolution, value.duration, onChange]);
 
   const model = VIDEO_MODELS.find((m) => m.id === value.model) ?? VIDEO_MODELS[0];
   const shot = resolveShot(value.model, value);
@@ -132,6 +157,7 @@ export function ShotControls({
           <Select
             id="shot-model"
             value={value.model}
+            disabled={pinned}
             onChange={(model) => onChange({ model })}
             groups={[
               { label: "Cheaper models", options: valueTier.map(option) },
@@ -139,6 +165,13 @@ export function ShotControls({
             ]}
           />
           <p className="mt-1.5 text-xs leading-snug text-muted">{model.blurb}</p>
+          {pinned && (
+            <p className="mt-1.5 text-xs leading-snug text-muted">
+              Your free shot is fixed at {model.label} · {FREE_TIER.video.resolution} ·{" "}
+              {FREE_TIER.video.duration}s. Choosing the model, quality and length is part of a
+              plan.
+            </p>
+          )}
           {unreachable && (
             <p className="mt-1.5 text-xs leading-snug text-danger">
               Higgsfield hasn&apos;t enabled {model.label} on this API key, so the shot will fail
@@ -155,7 +188,7 @@ export function ShotControls({
             id="shot-quality"
             value={shot.resolution ?? ("" as Resolution)}
             onChange={(resolution) => onChange({ resolution })}
-            disabled={!model.resolutions}
+            disabled={pinned || !model.resolutions}
             placeholder="Model's own"
             groups={[{ options: resolutionOptions }]}
           />
@@ -200,7 +233,7 @@ export function ShotControls({
             max={Math.max(0, stops.length - 1)}
             step={1}
             value={stopIndex}
-            disabled={stops.length < 2}
+            disabled={pinned || stops.length < 2}
             onChange={(e) => onChange({ duration: stops[Number(e.target.value)] })}
             aria-valuetext={`${shot.duration} seconds`}
           />

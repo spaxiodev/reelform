@@ -5,23 +5,38 @@
 
 export type ModelId =
   | "claude-haiku-4-5"
-  | "claude-sonnet-4-6"
+  | "claude-sonnet-5"
   | "claude-opus-4-8";
 
-export const MODELS: Record<ModelId, { label: string; blurb: string; credits: number }> = {
-  "claude-haiku-4-5": { label: "Haiku 4.5", blurb: "Fast drafts", credits: 10 },
-  "claude-sonnet-4-6": { label: "Sonnet 4.6", blurb: "Great everyday builds", credits: 35 },
-  "claude-opus-4-8": { label: "Opus 4.8", blurb: "Best design quality", credits: 120 },
+export const MODELS: Record<ModelId, { label: string; blurb: string }> = {
+  "claude-haiku-4-5": { label: "Haiku 4.5", blurb: "Fast drafts" },
+  "claude-sonnet-5": { label: "Sonnet 5", blurb: "Great everyday builds" },
+  "claude-opus-4-8": { label: "Opus 4.8", blurb: "Best design quality" },
 };
 
 export const DEFAULT_MODEL: ModelId = "claude-opus-4-8";
 
-// ── Metered (usage-based) billing for interactive edits ──────────────────
+// Model ids retired from the picker, mapped to their successor. Projects store
+// the id they were last built with, so without this a project saved against a
+// retired model would silently fall back to the default, which is the most
+// expensive one, and quietly bill the user more than they chose.
+const RETIRED_MODELS: Record<string, ModelId> = {
+  "claude-sonnet-4-6": "claude-sonnet-5",
+};
+
+/** The model a stored id should build with today. */
+export function resolveModel(stored: string | null | undefined): ModelId {
+  if (stored && stored in MODELS) return stored as ModelId;
+  return (stored && RETIRED_MODELS[stored]) || DEFAULT_MODEL;
+}
+
+// ── Metered (usage-based) billing ────────────────────────────────────────
 // Provider token prices in USD per million tokens (Anthropic list pricing).
-// Keep in sync with the models above.
+// Keep in sync with the models above: every credit price in this file is
+// derived from these numbers, so a stale rate here is a silent margin leak.
 export const MODEL_TOKEN_RATES: Record<ModelId, { input: number; output: number }> = {
   "claude-haiku-4-5": { input: 1, output: 5 },
-  "claude-sonnet-4-6": { input: 3, output: 15 },
+  "claude-sonnet-5": { input: 2, output: 10 },
   "claude-opus-4-8": { input: 5, output: 25 },
 };
 
@@ -69,6 +84,37 @@ export function estimateEditCredits(
   return { hold, outputBudget };
 }
 
+// ── Site builds ──────────────────────────────────────────────────────────
+// A build is billed the same metered way an edit is: a hold up front, then a
+// reconcile against the tokens the model actually spent. Flat per-model prices
+// were a standing loss, a build that ran to the output cap cost more at the
+// provider than the flat fee collected, and the size of a generated site
+// varies too much to guess one number that is fair in both directions.
+
+// Hard ceiling on a build's output. A single-file site at 32k tokens is ~120KB
+// of HTML, more than any one-page build needs, and the cap is what makes the
+// hold a real worst case rather than an estimate.
+export const SITE_BUILD_MAX_TOKENS = 32_000;
+
+// System prompt + brief + the video block. Comfortably above the real figure.
+const BUILD_INPUT_OVERHEAD = 4_000;
+
+/**
+ * The hold taken before a build runs, and the output budget it is priced for.
+ * The hold is the true worst case at `SITE_BUILD_MAX_TOKENS`, so the charge
+ * can only ever be reconciled *down*, never up.
+ */
+export function estimateBuildCredits(
+  model: ModelId,
+  outputBudget: number = SITE_BUILD_MAX_TOKENS
+): { hold: number; outputBudget: number } {
+  const hold = Math.max(
+    EDIT_MIN_CREDITS,
+    meteredCredits(model, { input: BUILD_INPUT_OVERHEAD, output: outputBudget })
+  );
+  return { hold, outputBudget };
+}
+
 import type { Resolution, VideoModelId } from "@/lib/higgsfield";
 
 export type { Resolution };
@@ -106,6 +152,13 @@ const RESOLUTION_MULTIPLIER: Record<Resolution, number> = {
   "1080p": 1.5,
 };
 
+// Because the per-second table above is an estimate rather than a rate card,
+// video is the one action whose true cost could be higher than we think, and a
+// shot priced under cost loses money on every single render. This factor is
+// insurance against that: it widens the effective margin on video only, until a
+// real Higgsfield invoice confirms the numbers. Set it back to 1 then.
+const VIDEO_COST_SAFETY = 1.25;
+
 /**
  * What one shot costs, in credits. Rounded up to a whole credit and to a
  * minimum of one, so a cheap model at 480p can never be free.
@@ -115,7 +168,11 @@ export function videoCost(
   resolution: Resolution,
   duration: Duration
 ): number {
-  const usd = VIDEO_MODEL_USD_PER_SECOND[model] * RESOLUTION_MULTIPLIER[resolution] * duration;
+  const usd =
+    VIDEO_MODEL_USD_PER_SECOND[model] *
+    RESOLUTION_MULTIPLIER[resolution] *
+    duration *
+    VIDEO_COST_SAFETY;
   return Math.max(1, Math.ceil((usd * CREDIT_MARGIN) / CREDIT_USD));
 }
 
@@ -132,6 +189,18 @@ export interface Plan {
   perks: string[];
 }
 
+// Every plan sells credits at a *worse* rate than the 1 credit = $0.01 face
+// value, and each tier gets a slightly better rate than the one below it. With
+// action prices set at 2× provider cost, an account that burns its whole grant
+// costs us half the credits' face value at the provider; the gap between that
+// and the plan price, less Stripe's ~2.9% + $0.30, is the gross margin:
+//
+//   Starter  $19  / 2,000 cr  → COGS $10.00, fees $0.85 → 43% margin
+//   Pro      $49  / 5,500 cr  → COGS $27.50, fees $1.72 → 40% margin
+//   Studio   $129 / 15,000 cr → COGS $75.00, fees $4.04 → 39% margin
+//
+// Those are worst cases (every credit spent). Keep any re-cut above ~40%: the
+// figures ignore Vercel, Supabase and support, which are real and grow with use.
 export const PLANS: Plan[] = [
   {
     id: "starter",
@@ -139,14 +208,14 @@ export const PLANS: Plan[] = [
     priceUsd: 19,
     creditsPerMonth: 2000,
     priceEnv: "STRIPE_PRICE_STARTER",
-    tagline: "~13 hero shots or a full site refresh every week",
+    tagline: "~16 hero shots, or a site build a week with edits in between",
     perks: ["Unlimited zip exports", "Public showcase"],
   },
   {
     id: "pro",
     name: "Pro",
     priceUsd: 49,
-    creditsPerMonth: 6000,
+    creditsPerMonth: 5500,
     priceEnv: "STRIPE_PRICE_PRO",
     tagline: "For freelancers shipping client sites",
     perks: ["One-click deploy to your Vercel", "Supabase backend for forms", "3 live sites"],
@@ -155,12 +224,23 @@ export const PLANS: Plan[] = [
     id: "studio",
     name: "Studio",
     priceUsd: 129,
-    creditsPerMonth: 18000,
+    creditsPerMonth: 15000,
     priceEnv: "STRIPE_PRICE_STUDIO",
     tagline: "Agency volume, best credit rate",
     perks: ["Everything in Pro", "25 live sites", "Deploy for every client"],
   },
 ];
+
+// How many months of unused plan credits an account may carry. At 1 the grant
+// would simply top the balance back up each month, which is no rollover at
+// all; at 2 a subscriber can miss a full month and lose nothing, and the
+// carried liability is bounded at two months of provider cost per account.
+export const ROLLOVER_MONTHS = 2;
+
+/** The ceiling on a plan's expiring balance, passed to the capped grant. */
+export function rolloverCap(plan: Plan): number {
+  return plan.creditsPerMonth * ROLLOVER_MONTHS;
+}
 
 export interface Topup {
   id: "small" | "medium" | "large";
@@ -182,6 +262,33 @@ export const TOPUPS: Topup[] = [
 // build, instead of a credit float. See lib/entitlements.ts for the rule; the
 // flags live on `profiles`, so the free tier can't be topped up.
 export const FREE_BUILD = { videos: 1, siteBuilds: 1 } as const;
+
+// ── What the free build is allowed to spend at a provider ────────────────
+// A free account still costs real money, and nothing stops anyone signing up
+// again with another address, so the free tier's provider cost has to be a
+// fixed, known number rather than whatever the user picks in the studio.
+// Uncapped, one signup could shoot Sora 2 Pro at 1080p for 12s and build on
+// Opus at the full output cap, ~$7 of provider spend for a $0 customer.
+//
+// Pinned instead to the cheapest video model and a small Haiku build:
+//
+//   video  seedance-lite · 720p · 5s  ≈ $0.18
+//   site   Haiku 4.5 · 16k output cap ≈ $0.08
+//                                     ─────────
+//                                       ~$0.26 per free account
+//
+// That is a customer-acquisition cost, and it is the number to argue with, not
+// the model list. Raising any of these raises the cost of every signup that
+// never converts, so change them together with a view on conversion rate.
+export const FREE_TIER = {
+  video: { model: "seedance-lite", resolution: "720p", duration: 5 },
+  siteModel: "claude-haiku-4-5",
+  siteOutputBudget: 16_000,
+} as const satisfies {
+  video: { model: VideoModelId; resolution: Resolution; duration: Duration };
+  siteModel: ModelId;
+  siteOutputBudget: number;
+};
 
 // ── Deployment (push a finished site to the user's own infrastructure) ────
 // Deploys run against the *customer's* Vercel and Supabase accounts, so they

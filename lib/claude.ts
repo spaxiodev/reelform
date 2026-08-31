@@ -99,20 +99,27 @@ When the user asks for changes to an existing site, return the FULL updated HTML
 export interface GenerateSiteParams {
   model: ModelId;
   brief: string; // fully assembled brief or edit instruction with current html
+  /** Hard output ceiling; the caller has taken a credit hold priced for it. */
+  outputBudget: number;
   onText: (delta: string) => void;
 }
 
 export interface GenerateSiteResult {
   html: string;
   refused: boolean;
+  /** Real token spend, for reconciling the caller's hold. */
+  usage: TokenUsage;
 }
 
-const MAX_TOKENS = 64000;
-
-export async function generateSite({ model, brief, onText }: GenerateSiteParams): Promise<GenerateSiteResult> {
+export async function generateSite({
+  model,
+  brief,
+  outputBudget,
+  onText,
+}: GenerateSiteParams): Promise<GenerateSiteResult> {
   const stream = client.messages.stream({
     model,
-    max_tokens: MAX_TOKENS,
+    max_tokens: outputBudget,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: brief }],
   });
@@ -126,11 +133,20 @@ export async function generateSite({ model, brief, onText }: GenerateSiteParams)
   }
 
   const final = await stream.finalMessage();
+  // Billed whatever the outcome: a refusal still burns input tokens, and a
+  // stream that reached the cap still produced everything up to it.
+  const usage: TokenUsage = {
+    input: final.usage.input_tokens ?? 0,
+    output: final.usage.output_tokens ?? 0,
+    cacheRead: final.usage.cache_read_input_tokens ?? 0,
+    cacheWrite: final.usage.cache_creation_input_tokens ?? 0,
+  };
+
   if (final.stop_reason === "refusal") {
-    return { html: "", refused: true };
+    return { html: "", refused: true, usage };
   }
 
-  return { html: stripFences(html), refused: false };
+  return { html: stripFences(html), refused: false, usage };
 }
 
 // Defensive: models are told not to fence output, but strip if they do.

@@ -1,4 +1,5 @@
 import { LegalShell, LegalSection } from "@/components/LegalShell";
+import { ROLLOVER_MONTHS } from "@/lib/pricing";
 import { pageMeta } from "@/lib/seo";
 import { CONTACT_EMAIL } from "@/components/SiteFooter";
 
@@ -22,12 +23,17 @@ export default function FaqPage() {
 
       <LegalSection heading="How do credits work?">
         <p>
-          Everything runs on credits: video renders and site builds each cost a fixed amount shown
-          before you confirm. One credit is roughly $0.01 of value. Every new account starts with
-          one complete website free: a hero video and a full site build.
+          Everything runs on credits. A video render costs a fixed amount shown before you
+          confirm; a site build reserves a ceiling and charges only what it actually uses, so the
+          number you see is the most it can cost. One credit is roughly $0.01 of value. Every new
+          account starts with one complete website free: a hero video and a full site build. The
+          free pair runs on a fixed preset, a 5-second 720p shot and a fast build, choosing the
+          model, resolution and shot length is what a plan unlocks.
         </p>
         <p>
-          Subscription credits refill monthly; top-up credits never expire. You can see every
+          Subscription credits refill monthly and roll over for up to {ROLLOVER_MONTHS} months, so
+          a quiet month costs you nothing; top-up credits never expire, and plan credits are always
+          spent first. You can see every
           credit movement under{" "}
           <a href="/account/credits" className="text-primary underline">
             Account → Credits &amp; activity

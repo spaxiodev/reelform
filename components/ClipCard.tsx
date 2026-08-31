@@ -33,6 +33,7 @@ export function ClipCard({
   removable,
   costLabel,
   isAdmin = false,
+  pinnedShot = false,
 }: {
   clip: VideoRow;
   index: number;
@@ -48,6 +49,8 @@ export function ClipCard({
   removable: boolean;
   costLabel: (n: number) => string;
   isAdmin?: boolean;
+  /** The free hero shot runs on a fixed preset; see ShotControls. */
+  pinnedShot?: boolean;
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [reshooting, setReshooting] = useState(false);
@@ -204,6 +207,7 @@ export function ClipCard({
                 showRatio
                 costLabel={costLabel}
                 isAdmin={isAdmin}
+                pinned={pinnedShot}
               />
             )}
           </div>

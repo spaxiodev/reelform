@@ -35,3 +35,25 @@ export async function grantCredits(
   });
   if (error) throw new Error(`grant_credits failed: ${error.message}`);
 }
+
+/**
+ * The monthly plan grant. Unlike `grantCredits` this is capped: unused plan
+ * credits roll over only up to `cap`, and the excess is forfeited at renewal
+ * (see supabase/migrations/20260831_credit_rollover.sql). Top-ups and refunds
+ * still go through `grantCredits` and never expire.
+ */
+export async function grantSubscriptionCredits(
+  userId: string,
+  amount: number,
+  cap: number,
+  ref?: string
+): Promise<void> {
+  const admin = createSupabaseAdmin();
+  const { error } = await admin.rpc("grant_subscription_credits", {
+    p_user: userId,
+    p_amount: amount,
+    p_cap: cap,
+    p_ref: ref ?? null,
+  });
+  if (error) throw new Error(`grant_subscription_credits failed: ${error.message}`);
+}

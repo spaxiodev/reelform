@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PRIVATE_PAGE } from "@/lib/seo";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
+import { isSubscribed } from "@/lib/entitlements";
 import { Studio } from "@/components/Studio";
 import { listVideos, VIDEO_COLUMNS, type VideoRow } from "@/lib/videos";
 
@@ -17,7 +18,11 @@ export default async function StudioPage({ params }: { params: Promise<{ id: str
 
   const [{ data: project }, { data: profile }, { data: messages }, videos] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).single(),
-    supabase.from("profiles").select("credits, plan").eq("id", user.id).single(),
+    supabase
+      .from("profiles")
+      .select("credits, plan, plan_status, free_video_used, free_site_used")
+      .eq("id", user.id)
+      .single(),
     supabase
       .from("messages")
       .select("role, target, content, created_at")
@@ -59,6 +64,8 @@ export default async function StudioPage({ params }: { params: Promise<{ id: str
       initialMessages={messages ?? []}
       plan={profile?.plan ?? "free"}
       isAdmin={isAdminUser(user.id)}
+      pinnedShot={!isAdminUser(user.id) && !isSubscribed(profile) && !profile?.free_video_used}
+      freeBuild={!isAdminUser(user.id) && !isSubscribed(profile) && !profile?.free_site_used}
     />
   );
 }

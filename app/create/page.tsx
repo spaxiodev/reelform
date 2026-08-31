@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
+import { isSubscribed } from "@/lib/entitlements";
 import { CreateFlow } from "@/components/CreateFlow";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PRIVATE_PAGE } from "@/lib/seo";
@@ -21,7 +22,7 @@ export default async function CreatePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("free_site_used")
+    .select("plan, plan_status, free_site_used, free_video_used")
     .eq("id", user.id)
     .single();
 
@@ -36,7 +37,13 @@ export default async function CreatePage() {
       </AppHeader>
 
       <main id="main" className="flex-1 px-6 md:px-10 py-12 md:py-16 max-w-4xl mx-auto w-full">
-        <CreateFlow isFirstBuild={!profile?.free_site_used} isAdmin={isAdminUser(user.id)} />
+        <CreateFlow
+          isFirstBuild={!profile?.free_site_used}
+          isAdmin={isAdminUser(user.id)}
+          pinnedShot={
+            !isAdminUser(user.id) && !isSubscribed(profile) && !profile?.free_video_used
+          }
+        />
       </main>
 
       <SiteFooter />

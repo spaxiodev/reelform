@@ -4,7 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toaster";
-import { MODELS, videoCost, type ModelId } from "@/lib/pricing";
+import {
+  MODELS,
+  FREE_TIER,
+  estimateBuildCredits,
+  resolveModel,
+  videoCost,
+  type ModelId,
+} from "@/lib/pricing";
 import {
   DEFAULT_VIDEO_MODEL,
   isVideoModel,
@@ -72,6 +79,8 @@ export function Studio({
   initialMessages,
   plan,
   isAdmin = false,
+  pinnedShot = false,
+  freeBuild = false,
 }: {
   project: ProjectRow;
   initialVideos: VideoRow[];
@@ -79,6 +88,10 @@ export function Studio({
   initialMessages: MessageRow[];
   plan: string;
   isAdmin?: boolean;
+  /** The free hero shot runs on a fixed preset; see ShotControls. */
+  pinnedShot?: boolean;
+  /** The one free site build runs on a fixed model and is not charged for. */
+  freeBuild?: boolean;
 }) {
   // Brief
   const [name, setName] = useState(project.name);
@@ -103,7 +116,7 @@ export function Studio({
 
   // Build
   const [model, setModel] = useState<ModelId>(
-    (project.model as ModelId) in MODELS ? (project.model as ModelId) : "claude-opus-4-8"
+    freeBuild ? FREE_TIER.siteModel : resolveModel(project.model)
   );
   const [siteHtml, setSiteHtml] = useState(project.site_html);
   const [published, setPublished] = useState(project.published);
@@ -611,12 +624,16 @@ export function Studio({
     toast("Template loaded. Replace the [bracketed] parts with your details.", "info");
   }
 
-  const claudeCost = MODELS[model].credits;
+  // Builds are metered: this is the ceiling held up front, and anything the
+  // build does not spend comes straight back (see /api/site/generate).
+  const claudeCost = estimateBuildCredits(model).hold;
   // Chat-requested clips are shot at the studio default (see /api/video/request).
   const extraClipCost = videoCost(DEFAULT_VIDEO_MODEL, "720p", 5);
 
-  // Admins never spend credits: show "Free" wherever a cost would appear.
-  const costLabel = (n: number) => (isAdmin ? "Free" : `${n} credits`);
+  // Admins never spend credits, and a free account's first shot and first
+  // build are on us: show that rather than a price nobody is going to pay.
+  const costLabel = (n: number) =>
+    isAdmin ? "Free" : pinnedShot ? `Free · normally ${n} credits` : `${n} credits`;
 
   const steps = [
     { n: 1 as const, label: "Brief", done: siteBrief.trim().length > 0 },
@@ -829,6 +846,7 @@ export function Studio({
                     removable={clips.length > 1}
                     costLabel={costLabel}
                     isAdmin={isAdmin}
+                    pinnedShot={pinnedShot}
                   />
                 ))}
               </div>
@@ -1070,6 +1088,7 @@ export function Studio({
                           <Select
                             value={model}
                             onChange={setModel}
+                            disabled={freeBuild}
                             ariaLabel="Who writes your site"
                             groups={[
                               {
@@ -1077,14 +1096,15 @@ export function Studio({
                                   value: id,
                                   label: MODELS[id].label,
                                   description: MODELS[id].blurb,
-                                  meta: `${MODELS[id].credits} cr`,
+                                  meta: `up to ${estimateBuildCredits(id).hold} cr`,
                                 })),
                               },
                             ]}
                           />
                           <p className="mt-1.5 text-xs text-faint">
-                            Better models design better sites and cost more credits. Opus is the sweet
-                            spot.
+                            {freeBuild
+                              ? `Your free build is written by ${MODELS[FREE_TIER.siteModel].label}. Choosing who writes your site is part of a plan.`
+                              : "Better models design better sites and cost more credits. Opus is the sweet spot."}
                           </p>
                         </div>
                       </div>
@@ -1096,7 +1116,8 @@ export function Studio({
                     disabled={building || readyClips.length === 0 || !siteBrief.trim()}
                     className="btn-primary w-full !py-4 mt-6"
                   >
-                    Build my website · {costLabel(claudeCost)}
+                    Build my website ·{" "}
+                    {isAdmin || freeBuild ? "Free" : `up to ${claudeCost} credits`}
                   </button>
                   <p className="mt-2 text-xs text-faint text-center">
                     Streams live, usually 1–3 minutes.
