@@ -4,7 +4,7 @@ import { PRIVATE_PAGE } from "@/lib/seo";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { listIntegrationStatus } from "@/lib/integrations";
 import { IntegrationSettings } from "@/components/IntegrationSettings";
-import { DEPLOY_MIN_PLAN, canDeploy, deploySiteLimit } from "@/lib/pricing";
+import { DEPLOY_ENABLED, DEPLOY_MIN_PLAN, canDeploy, deploySiteLimit } from "@/lib/pricing";
 
 export const metadata = { title: "Integrations", ...PRIVATE_PAGE };
 
@@ -31,6 +31,21 @@ export default async function IntegrationsPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/account/integrations");
+
+  if (!DEPLOY_ENABLED) {
+    return (
+      <div className="card p-6">
+        <p className="mono-label">DEPLOYMENTS</p>
+        <h1 className="mt-1 text-2xl font-medium tracking-tight">Publishing isn&apos;t live yet</h1>
+        <p className="mt-3 text-sm text-muted leading-relaxed max-w-prose">
+          Pushing sites straight to your own Vercel and Supabase accounts is still being wired up,
+          so there is nothing to connect here for now. Every finished site can already be
+          downloaded as a zip from the studio &mdash; the page and its videos, ready to host
+          anywhere.
+        </p>
+      </div>
+    );
+  }
 
   const [{ data: profile }, integrations, { count: liveCount }] = await Promise.all([
     supabase.from("profiles").select("plan").eq("id", user.id).single(),

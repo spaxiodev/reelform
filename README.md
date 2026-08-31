@@ -76,11 +76,17 @@ npm run dev
 Missing required vars are reported at server start by `instrumentation.ts` — loudly in
 production (it refuses to boot), as a warning in development.
 
-### 6. Deploy integrations (optional — Pro/Studio "Publish live")
+### 6. Deploy integrations (currently disabled — Pro/Studio "Publish live")
 
 Lets customers push a finished site into **their own** Vercel and Supabase accounts.
 Nothing is hosted by us, so a shipped site outlives the customer's subscription.
 Skip this and the studio still offers the zip download.
+
+> **Switched off at the source.** `DEPLOY_ENABLED` in `lib/pricing.ts` is `false`,
+> so the plan perks, the pricing section, the studio's *Publish live* button and the
+> account tab are all hidden — nothing advertises or offers a feature that would
+> dead-end at `?error=not_configured`. Complete the steps below **and** flip that flag
+> to `true` to bring it back everywhere at once.
 
 1. Set `INTEGRATION_SECRET` (32+ random chars, `openssl rand -base64 48`). It encrypts
    the stored OAuth tokens; rotating it just forces everyone to reconnect.

@@ -2,6 +2,7 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+import { appUrl } from "@/lib/env";
 
 // Opens the Stripe customer portal (manage/cancel subscription, invoices).
 export async function POST() {
@@ -25,7 +26,7 @@ export async function POST() {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard`,
+    return_url: `${appUrl()}/dashboard`,
   });
   return NextResponse.json({ url: session.url });
 }

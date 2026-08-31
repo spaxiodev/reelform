@@ -3,6 +3,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe, priceIdFor } from "@/lib/stripe";
 import { PLANS, TOPUPS } from "@/lib/pricing";
+import { appUrl as canonicalAppUrl } from "@/lib/env";
 
 interface Body {
   kind: "plan" | "topup";
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const body = (await request.json()) as Body;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = canonicalAppUrl();
 
   const admin = createSupabaseAdmin();
   const { data: profile } = await admin

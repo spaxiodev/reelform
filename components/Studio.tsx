@@ -11,6 +11,7 @@ import {
   resolveModel,
   videoCost,
   type ModelId,
+  DEPLOY_ENABLED,
 } from "@/lib/pricing";
 import {
   DEFAULT_VIDEO_MODEL,
@@ -690,6 +691,7 @@ export function Studio({
               >
                 {downloading ? "Packaging…" : "⬇ Download"}
               </button>
+              {DEPLOY_ENABLED && (
               <button
                 onClick={() => setDeployOpen(true)}
                 title={liveUrl ? `Live at ${liveUrl}. Click to ship the latest version` : "Push this site live on your own Vercel and Supabase"}
@@ -697,6 +699,7 @@ export function Studio({
               >
                 {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
               </button>
+              )}
             </>
           )}
         </div>
@@ -964,12 +967,14 @@ export function Studio({
                     >
                       {downloading ? "Packaging…" : "⬇ Download"}
                     </button>
+                    {DEPLOY_ENABLED && (
                     <button
                       onClick={() => setDeployOpen(true)}
                       className="btn-primary !py-1.5 !px-3.5 !text-xs shrink-0"
                     >
                       {liveUrl ? "◉ Live · redeploy" : "↑ Publish live"}
                     </button>
+                    )}
                   </div>
                 </div>
 

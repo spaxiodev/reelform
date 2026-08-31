@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DEPLOY_ENABLED } from "@/lib/pricing";
 
 const TABS = [
   { href: "/account", label: "Overview" },
   { href: "/account/billing", label: "Billing & invoices" },
   { href: "/account/credits", label: "Credits & activity" },
-  { href: "/account/integrations", label: "Deploy integrations" },
+  // Hidden while deploys are off; the page itself still explains the state for
+  // anyone holding a bookmark.
+  ...(DEPLOY_ENABLED ? [{ href: "/account/integrations", label: "Deploy integrations" }] : []),
   { href: "/account/security", label: "Security" },
 ];
 

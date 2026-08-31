@@ -215,6 +215,14 @@ create table if not exists public.credit_ledger (
 
 create index if not exists ledger_user_idx on public.credit_ledger (user_id, created_at desc);
 
+-- Stripe delivers webhooks *at least once*, so fulfilment is keyed on the
+-- Stripe object id in `ref` and the same payment can never be credited twice.
+-- `refund` is deliberately excluded: it reuses the project id as its ref on
+-- every failed generation and must stay repeatable.
+create unique index if not exists credit_ledger_fulfilment_key
+  on public.credit_ledger (user_id, reason, ref)
+  where ref is not null and reason in ('topup', 'subscription');
+
 -- ── Row Level Security ───────────────────────────────────────────────
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
@@ -409,6 +417,15 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  -- A retried webhook must not grant the same payment twice.
+  if p_ref is not null and p_reason in ('topup', 'subscription') then
+    perform 1 from public.credit_ledger
+      where user_id = p_user and reason = p_reason and ref = p_ref;
+    if found then
+      return;
+    end if;
+  end if;
+
   update public.profiles set credits = credits + p_amount where id = p_user;
   insert into public.credit_ledger (user_id, delta, reason, ref)
   values (p_user, p_amount, p_reason, p_ref);
@@ -435,6 +452,15 @@ declare
   v_after integer;
   v_added integer;
 begin
+  -- A replayed invoice must not grant a second month.
+  if p_ref is not null then
+    perform 1 from public.credit_ledger
+      where user_id = p_user and reason = 'subscription' and ref = p_ref;
+    if found then
+      return;
+    end if;
+  end if;
+
   select subscription_credits into v_before from public.profiles where id = p_user for update;
   if v_before is null then
     return;

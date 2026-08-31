@@ -218,7 +218,7 @@ export const PLANS: Plan[] = [
     creditsPerMonth: 5500,
     priceEnv: "STRIPE_PRICE_PRO",
     tagline: "For freelancers shipping client sites",
-    perks: ["One-click deploy to your Vercel", "Supabase backend for forms", "3 live sites"],
+    perks: ["Everything in Starter", "Better rate per credit"],
   },
   {
     id: "studio",
@@ -227,7 +227,7 @@ export const PLANS: Plan[] = [
     creditsPerMonth: 15000,
     priceEnv: "STRIPE_PRICE_STUDIO",
     tagline: "Agency volume, best credit rate",
-    perks: ["Everything in Pro", "25 live sites", "Deploy for every client"],
+    perks: ["Everything in Pro", "Best rate per credit"],
   },
 ];
 
@@ -296,6 +296,20 @@ export const FREE_TIER = {
 // price. The cap is on how many distinct sites may be live at once, which is
 // what separates a freelancer from an agency.
 
+/**
+ * Master switch for pushing sites to a customer's own Vercel / Supabase.
+ *
+ * Off until the OAuth apps are registered and INTEGRATION_SECRET,
+ * VERCEL_CLIENT_* and SUPABASE_OAUTH_* are set. Without them every attempt
+ * dead-ends at `?error=not_configured`, so nothing may advertise or offer it.
+ * Flip to true once those are configured and the feature returns everywhere:
+ * the plan perks, the pricing section, the studio button and this account page
+ * all read this flag rather than hard-coding the answer.
+ */
+export const DEPLOY_ENABLED = false;
+
+// Per-plan ceilings stay defined even while the feature is off, so
+// DEPLOY_MIN_PLAN below still resolves and re-enabling is a one-line change.
 export const DEPLOY_SITE_LIMIT: Record<PlanId, number> = {
   free: 0,
   starter: 0,
@@ -309,7 +323,7 @@ export function planId(plan: string | null | undefined): PlanId {
 
 /** Whether a plan may push sites to Vercel / Supabase at all. */
 export function canDeploy(plan: string | null | undefined): boolean {
-  return DEPLOY_SITE_LIMIT[planId(plan)] > 0;
+  return DEPLOY_ENABLED && DEPLOY_SITE_LIMIT[planId(plan)] > 0;
 }
 
 /** How many projects a plan may keep live simultaneously. */

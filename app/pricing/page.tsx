@@ -4,7 +4,6 @@ import {
   MODELS,
   estimateBuildCredits,
   videoCost,
-  DEPLOY_SITE_LIMIT,
   type ModelId,
 } from "@/lib/pricing";
 import { VIDEO_MODELS, type VideoModelId } from "@/lib/higgsfield";
@@ -96,22 +95,6 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Deploying */}
-        <div className="mt-16 card p-8">
-          <p className="mono-label">DEPLOYS · PRO AND STUDIO</p>
-          <h2 className="mt-3 text-2xl font-medium tracking-tight">
-            Push it live on your own stack.
-          </h2>
-          <p className="mt-3 text-sm text-muted leading-relaxed max-w-2xl">
-            Connect your Vercel and Supabase accounts and a finished site ships straight into them:
-            the page and its videos deployed to Vercel, the contact form writing into your own
-            Supabase table. You own the project, the domain and the data, so the site keeps running
-            whatever happens to your Reelform plan. Deploys don&apos;t cost credits; your plan just
-            sets how many sites stay live at once ({DEPLOY_SITE_LIMIT.pro} on Pro,{" "}
-            {DEPLOY_SITE_LIMIT.studio} on Studio).
-          </p>
         </div>
 
         {/* What credits buy */}
