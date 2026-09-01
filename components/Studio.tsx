@@ -155,23 +155,36 @@ export function Studio({
 
   // How much of the screen the site preview takes; the chat gets the rest.
   const [previewPct, setPreviewPct] = useState(58);
+  const [draggingSplit, setDraggingSplit] = useState(false);
   const splitRef = useRef<HTMLDivElement>(null);
 
-  function startDragSplit(e: React.PointerEvent) {
+  function startDragSplit(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
     const container = splitRef.current;
     if (!container) return;
+    // The preview is a cross-origin iframe, so it eats pointer events the
+    // moment the cursor crosses back over it — which used to make the drag
+    // one-way: you could grow the site but never give the chat its room back.
+    // Capturing the pointer on the handle (and letting the drag flag switch
+    // the frame inert below) keeps every move coming back to us.
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    setDraggingSplit(true);
     const move = (ev: PointerEvent) => {
       const { top, height } = container.getBoundingClientRect();
       const pct = ((ev.clientY - top) / height) * 100;
       setPreviewPct(Math.min(85, Math.max(25, pct)));
     };
     const stop = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
+      setDraggingSplit(false);
+      handle.releasePointerCapture(e.pointerId);
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
   }
 
   const readyClips = useMemo(
@@ -978,13 +991,16 @@ export function Studio({
                   </div>
                 </div>
 
-                <div ref={splitRef} className="flex-1 min-h-0 flex flex-col">
+                <div
+                  ref={splitRef}
+                  className={`flex-1 min-h-0 flex flex-col ${draggingSplit ? "select-none" : ""}`}
+                >
                   {/* The website itself: scrollable, exactly as visitors see it. */}
                   <iframe
                     key={previewVersion}
                     srcDoc={siteHtml}
                     title="Site preview"
-                    className="w-full bg-white shrink-0"
+                    className={`w-full bg-white shrink-0 ${draggingSplit ? "pointer-events-none" : ""}`}
                     style={{ height: `${previewPct}%` }}
                     // allow-scripts only, deliberately WITHOUT allow-same-origin.
                     // Granting both together defeats the sandbox: the frame would
