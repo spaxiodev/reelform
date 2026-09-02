@@ -21,6 +21,8 @@ export default function robots(): MetadataRoute.Robots {
           // Auth entry points carry `next` and `mode` params that generate
           // endless near-duplicate URLs.
           "/login",
+          "/forgot-password",
+          "/reset-password",
         ],
       },
     ],

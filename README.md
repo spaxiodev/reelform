@@ -28,7 +28,10 @@ Every action is metered in credits with atomic spend/refund in Postgres. Failed 
 3. Copy from **Project Settings → API** into `.env.local`:
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 4. **Auth → URL Configuration**: set Site URL to your app URL, add `https://your-app/api/auth/callback` to redirect URLs.
-5. Optional: under **Auth → Sign In / Up**, disable "Confirm email" for frictionless local testing (keep it on in production).
+   Every auth email (confirm signup, reset password, change email) links to `{{ .SiteURL }}/api/auth/callback`, so the Site URL must be the real production origin (`https://www.reelform.io`), and `http://localhost:3000/api/auth/callback` needs to be on the redirect list for local work.
+5. **Email templates** live in `supabase/templates/` and are wired up in `supabase/config.toml`. Push them to the hosted project with `supabase login` (as the project owner), `supabase link --project-ref <ref>`, then `supabase config push`. Or paste each file into **Auth → Emails** in the dashboard, with the subjects from `config.toml`. The templates use `{{ .TokenHash }}` links, which `/api/auth/callback` verifies server-side, so a link opened on another device or browser still works.
+6. **SMTP**: the built-in sender is capped at a few emails per hour. Before launch, set a custom SMTP provider under **Auth → SMTP settings** so signups and password resets are not throttled.
+7. Optional: under **Auth → Sign In / Up**, disable "Confirm email" for frictionless local testing (keep it on in production).
 
 ### 2. Anthropic
 

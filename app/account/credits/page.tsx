@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { LEDGER_REASONS, ledgerLabel } from "@/lib/ledger";
 import { ROLLOVER_MONTHS } from "@/lib/pricing";
+import { isSubscribed } from "@/lib/entitlements";
 
 export const metadata = { title: "Credits & activity", ...PRIVATE_PAGE };
 
@@ -32,7 +33,11 @@ export default async function CreditsPage({
   if (filter) query = query.eq("reason", filter);
 
   const [{ data: profile }, { data: ledger, count }, { data: allDeltas }] = await Promise.all([
-    supabase.from("profiles").select("credits, subscription_credits").eq("id", user.id).single(),
+    supabase
+      .from("profiles")
+      .select("credits, subscription_credits, plan, plan_status")
+      .eq("id", user.id)
+      .single(),
     query,
     supabase.from("credit_ledger").select("delta"),
   ]);
@@ -62,8 +67,10 @@ export default async function CreditsPage({
               {ROLLOVER_MONTHS} months
             </p>
           )}
+          {/* Top-ups need a live plan, so a free account is pointed at the
+              plans instead of a button the checkout would only refuse. */}
           <Link href="/pricing" className="mt-1 inline-block text-sm font-medium text-primary hover:text-primary-deep">
-            Top up →
+            {isSubscribed(profile) ? "Top up →" : "Choose a plan →"}
           </Link>
         </div>
         <div className="card p-6">

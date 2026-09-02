@@ -2,11 +2,27 @@ import { redirect } from "next/navigation";
 import { PRIVATE_PAGE } from "@/lib/seo";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { DeleteAccountButton } from "@/components/AccountActions";
-import { ChangePasswordForm, SignOutEverywhereButton } from "@/components/SecurityActions";
+import {
+  ChangeEmailForm,
+  ChangePasswordForm,
+  SignOutEverywhereButton,
+} from "@/components/SecurityActions";
 
 export const metadata = { title: "Security", ...PRIVATE_PAGE };
 
-export default async function SecurityPage() {
+// Banners for the emailed flows that land back here via /api/auth/callback.
+const NOTICES: Record<string, string> = {
+  email_changed:
+    "Email confirmation received. Once both the old and the new address have confirmed, the new one shows below.",
+};
+
+export default async function SecurityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const { notice } = await searchParams;
+  const banner = notice ? NOTICES[notice] : undefined;
   const supabase = await createSupabaseServer();
   const {
     data: { user },
@@ -23,6 +39,10 @@ export default async function SecurityPage() {
 
   return (
     <div className="space-y-4">
+      {banner && (
+        <p className="rounded-xl bg-primary-soft text-primary-deep px-4 py-3 text-sm">{banner}</p>
+      )}
+
       {/* Sign-in details */}
       <section className="card p-6 md:p-8">
         <h2 className="text-xl font-medium tracking-tight">Sign-in details</h2>
@@ -48,12 +68,26 @@ export default async function SecurityPage() {
         </dl>
       </section>
 
+      {/* Email */}
+      <section className="card p-6 md:p-8">
+        <h2 className="text-xl font-medium tracking-tight">Change email</h2>
+        <p className="mt-2 text-sm text-muted">
+          We&apos;ll send a confirmation link to both your current and your new address. Your
+          sign-in email changes once both are confirmed.
+        </p>
+        <ChangeEmailForm currentEmail={email} />
+      </section>
+
       {/* Password */}
       <section className="card p-6 md:p-8">
         <h2 className="text-xl font-medium tracking-tight">Change password</h2>
         <p className="mt-2 text-sm text-muted">
           Pick a strong password of at least 8 characters. You&apos;ll stay signed in on this
-          device.
+          device. Forgot the current one? Sign out and use{" "}
+          <a href="/forgot-password" className="text-primary font-medium hover:text-primary-deep">
+            Forgot password
+          </a>{" "}
+          on the sign-in page.
         </p>
         <ChangePasswordForm />
       </section>

@@ -14,7 +14,20 @@ const AUTH_ERRORS: Record<string, string> = {
   no_code: "Sign-in link was invalid or expired. Try again.",
   exchange_failed: "We could not finish signing you in. Try again in this same browser tab.",
   access_denied: "You cancelled the Google sign-in. Nothing was changed.",
+  otp_expired: "That email link has expired or was already used. Sign in to request a new one.",
+  recovery_expired:
+    "That password reset link has expired or was already used. Request a new one below.",
 };
+
+// Friendly confirmations after an emailed action completes.
+const AUTH_NOTICES: Record<string, string> = {
+  password_reset: "Your password was updated. Sign in with the new one.",
+};
+
+// Supabase's message when the address exists but was never confirmed. Matched
+// loosely so a wording change upstream degrades to the raw message rather than
+// hiding the resend button behind a typo.
+const UNCONFIRMED = /not confirmed/i;
 
 function LoginForm() {
   const router = useRouter();
@@ -27,14 +40,42 @@ function LoginForm() {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => {
+    const key = searchParams.get("notice");
+    return key ? (AUTH_NOTICES[key] ?? null) : null;
+  });
   const [error, setError] = useState<string | null>(() => {
     const reason = searchParams.get("error");
     if (!reason) return null;
     return AUTH_ERRORS[reason] ?? `Sign-in failed (${reason}). Try again.`;
   });
+  // Shown once an account exists but its confirmation email hasn't been acted
+  // on: right after signup, or when a sign-in is refused for that reason.
+  const [canResend, setCanResend] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const next = searchParams.get("next") ?? "/dashboard";
+
+  async function resendConfirmation() {
+    if (!email) {
+      setError("Enter your email above first, then resend.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await createSupabaseBrowser().auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
+    });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setError(null);
+    setResent(true);
+    setNotice("Confirmation email sent again. Give it a minute and check spam too.");
+  }
 
   async function signInWithGoogle() {
     setBusy(true);
@@ -99,11 +140,17 @@ function LoginForm() {
         // Account created but gated behind the confirmation email.
         trackEvent("signup_started", { method: "password" });
         setNotice("Check your email to confirm your account, then sign in.");
+        setCanResend(true);
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setError(error.message);
+        setError(
+          UNCONFIRMED.test(error.message)
+            ? "This email hasn't been confirmed yet. Open the link we sent you, or resend it below."
+            : error.message
+        );
+        setCanResend(UNCONFIRMED.test(error.message));
       } else {
         router.push(next);
         router.refresh();
@@ -226,9 +273,19 @@ function LoginForm() {
               />
             </div>
             <div>
-              <label className="mono-label block mb-2" htmlFor="password">
-                PASSWORD
-              </label>
+              <div className="flex items-baseline justify-between mb-2">
+                <label className="mono-label" htmlFor="password">
+                  PASSWORD
+                </label>
+                {mode === "signin" && (
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-medium text-primary hover:text-primary-deep"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <input
                 id="password"
                 type="password"
@@ -243,6 +300,16 @@ function LoginForm() {
 
             {error && <p className="text-danger text-sm">{error}</p>}
             {notice && <p className="text-primary text-sm">{notice}</p>}
+            {canResend && !resent && (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                disabled={busy}
+                className="text-sm font-medium text-primary hover:text-primary-deep"
+              >
+                Resend confirmation email
+              </button>
+            )}
 
             <button type="submit" disabled={busy} className="btn-primary w-full">
               {busy ? "One moment…" : mode === "signup" ? "Create account" : "Sign in"}
@@ -255,6 +322,8 @@ function LoginForm() {
               setMode(mode === "signup" ? "signin" : "signup");
               setError(null);
               setNotice(null);
+              setCanResend(false);
+              setResent(false);
             }}
           >
             {mode === "signup" ? "Already have an account? Sign in" : "No account yet? Start free"}

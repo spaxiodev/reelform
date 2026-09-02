@@ -1,18 +1,54 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-// Handles every redirect back from Supabase auth: the OAuth providers and the
-// emailed confirmation / magic links alike.
+// Handles every redirect back from Supabase auth:
+//
+//   1. OAuth providers (Google) land here with `?code=` and are exchanged for a
+//      session via PKCE.
+//   2. Every email we send (confirm signup, reset password, change email,
+//      magic link, invite) links here with `?token_hash=&type=`. Those are
+//      verified server-side, which works no matter which browser or device
+//      opens the link. A `?code=` on an emailed link also still works, so the
+//      stock Supabase templates keep functioning if ours are ever reverted.
 //
 // Redirect back to the host the request actually arrived on, not
 // NEXT_PUBLIC_APP_URL. The apex 308s to www, so the two can differ, and
 // bouncing across hosts here would leave the freshly set session cookie on the
 // wrong one. `request.nextUrl` already reflects x-forwarded-host on Vercel.
+
+const EMAIL_OTP_TYPES: ReadonlySet<string> = new Set([
+  "signup",
+  "invite",
+  "magiclink",
+  "recovery",
+  "email_change",
+  "email",
+]);
+
+// Where each kind of email link should land once verified, unless the link
+// itself says otherwise. A recovery link always goes to the reset form: the
+// visitor has a session now but still has no password they know.
+const DEFAULT_NEXT: Record<string, string> = {
+  recovery: "/reset-password",
+  email_change: "/account/security?notice=email_changed",
+  signup: "/dashboard?welcome=1",
+};
+
+// Only ever redirect within this site. `next` comes off the query string, so
+// a crafted link must not be able to bounce a fresh session to another host.
+function safeNext(raw: string | null, fallback: string): string {
+  if (!raw) return fallback;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
+  return raw;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const origin = request.nextUrl.origin;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
 
   // Supabase reports a refused provider or a disallowed redirect_to as query
   // params rather than an exception, so a missing `code` is not always "the
@@ -26,12 +62,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(providerError)}`);
   }
 
+  const supabase = await createSupabaseServer();
+
+  // Emailed link: verify the hashed token directly.
+  if (tokenHash && type) {
+    if (!EMAIL_OTP_TYPES.has(type)) {
+      console.error("[auth/callback] unknown email otp type", { type });
+      return NextResponse.redirect(`${origin}/login?error=no_code`);
+    }
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as EmailOtpType,
+    });
+    if (error) {
+      console.error("[auth/callback] token verification failed", {
+        message: error.message,
+        status: error.status,
+        type,
+      });
+      const reason = type === "recovery" ? "recovery_expired" : "otp_expired";
+      return NextResponse.redirect(`${origin}/login?error=${reason}`);
+    }
+    const next =
+      type === "recovery"
+        ? DEFAULT_NEXT.recovery
+        : safeNext(searchParams.get("next"), DEFAULT_NEXT[type] ?? "/dashboard");
+    return NextResponse.redirect(`${origin}${next}`);
+  }
+
   if (!code) {
     console.error("[auth/callback] no code on the callback URL", { url: request.nextUrl.href });
     return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  const supabase = await createSupabaseServer();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
@@ -45,5 +108,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=exchange_failed`);
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(`${origin}${safeNext(searchParams.get("next"), "/dashboard")}`);
 }

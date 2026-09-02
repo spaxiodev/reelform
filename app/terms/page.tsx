@@ -49,7 +49,11 @@ export default function TermsPage() {
             cancelled. You can cancel anytime; your plan stays active until the end of the paid
             period.
           </li>
-          <li>Top-up credit packs are one-time purchases and never expire.</li>
+          <li>
+            Top-up credit packs are one-time purchases that never expire. They are available to
+            accounts with an active subscription; they are an add-on to a plan, not a substitute
+            for one.
+          </li>
           <li>
             Subscription credits roll over for up to {ROLLOVER_MONTHS} months. Your plan balance is
             capped at {ROLLOVER_MONTHS} months&rsquo; worth of credits, so you can miss a month

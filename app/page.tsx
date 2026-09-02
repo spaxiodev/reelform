@@ -20,7 +20,7 @@ const FAQS = [
   },
   {
     q: "How do credits work?",
-    a: "Every video shoot and every Claude build has a transparent credit price shown before you click. Subscriptions refill monthly at the best rate; top-up credits never expire. New accounts get one complete website free (a hero video and a full build), then pick a plan to keep iterating.",
+    a: "Every video shoot and every Claude build has a transparent credit price shown before you click. Subscriptions refill monthly at the best rate; subscribers can buy top-up credits, which never expire. New accounts get one complete website free (a hero video and a full build), then pick a plan to keep iterating.",
   },
   {
     q: "Can I change the site after it's built?",
@@ -244,7 +244,7 @@ export default function Home() {
                   Where ideas become sites that move.
                 </h2>
                 <p className="mt-5 text-lg text-white/90 leading-relaxed">
-                  Plans from ${PLANS[0].priceUsd}/mo, top up anytime, unused credits never expire.
+                  Plans from ${PLANS[0].priceUsd}/mo, subscribers top up anytime, unused credits never expire.
                   Your first website is free: one hero video and a full build, no card needed.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">

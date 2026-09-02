@@ -52,8 +52,9 @@ export default function FaqPage() {
       <LegalSection heading="What's the difference between plans and top-ups?">
         <p>
           Plans are monthly subscriptions with the best credit rate, and they are ideal if you build regularly.
-          Top-ups are one-time purchases at a slightly higher rate, and those credits never expire.
-          You can mix both freely.
+          Top-ups are a subscriber add-on for the months you outrun your plan: one-time purchases
+          at a slightly higher rate, and those credits never expire. You need an active plan to
+          buy one.
         </p>
       </LegalSection>
 

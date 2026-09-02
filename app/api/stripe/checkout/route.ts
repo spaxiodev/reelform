@@ -3,6 +3,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe, priceIdFor } from "@/lib/stripe";
 import { PLANS, TOPUPS } from "@/lib/pricing";
+import { isSubscribed } from "@/lib/entitlements";
 import { appUrl as canonicalAppUrl } from "@/lib/env";
 
 interface Body {
@@ -24,9 +25,19 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdmin();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id, email")
+    .select("stripe_customer_id, email, plan, plan_status")
     .eq("id", user.id)
     .single();
+
+  // Top-ups extend a plan, they don't replace one. Without this a free account
+  // could buy credits it has no subscriber features to spend them on, and the
+  // cheapest route to credits would bypass the subscription entirely.
+  if (body.kind === "topup" && !isSubscribed(profile)) {
+    return NextResponse.json(
+      { error: "Top-ups are for subscribers. Choose a plan first, then top up any time." },
+      { status: 403 }
+    );
+  }
 
   let customerId = profile?.stripe_customer_id as string | null;
   if (!customerId) {

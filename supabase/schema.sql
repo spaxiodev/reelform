@@ -61,11 +61,45 @@ end $$;
 create unique index if not exists profiles_username_key
   on public.profiles (lower(username));
 
--- Public-safe slice of profiles (no email, credits or Stripe ids). The view
--- runs as its owner, so it bypasses profiles RLS by design.
-create or replace view public.public_profiles as
+-- Public-safe slice of profiles (no email, credits or Stripe ids), readable
+-- by everyone even though profiles RLS only lets a member read their own row.
+-- The RLS bypass lives in a SECURITY DEFINER function that returns exactly the
+-- safe columns (same trust model as can_view_profile below); the view is a
+-- security_invoker wrapper so Supabase's security_definer_view lint stays
+-- quiet. See migrations/20260902_public_profiles_invoker.sql for the
+-- trade-off (filters are not pushed into the function).
+-- `private` is not in PostgREST's exposed schemas, so nothing in it is
+-- reachable over /rest/v1/rpc. anon/authenticated still get USAGE on it so a
+-- security_invoker view in `public` can call functions that live here.
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to anon, authenticated;
+
+create or replace function private.public_profile_rows()
+returns table (
+  id uuid,
+  username text,
+  full_name text,
+  is_private boolean,
+  created_at timestamptz,
+  avatar_url text
+)
+language sql stable security definer set search_path = ''
+as $$
   select id, username, full_name, is_private, created_at, avatar_url
-    from public.profiles;
+    from public.profiles
+$$;
+
+revoke execute on function private.public_profile_rows() from public;
+grant execute on function private.public_profile_rows() to anon, authenticated;
+
+create or replace view public.public_profiles
+  with (security_invoker = true) as
+  select id, username, full_name, is_private, created_at, avatar_url
+    from private.public_profile_rows();
+
+-- Earlier revision of this migration put the helper in `public`.
+drop function if exists public.public_profile_rows();
 
 grant select on public.public_profiles to anon, authenticated;
 
@@ -612,3 +646,32 @@ alter table public.projects add column if not exists live_at timestamptz;
 
 create index if not exists projects_live_idx on public.projects (user_id)
   where live_at is not null;
+
+-- ── Keep profiles.email in step with auth.users.email (see migrations/20260902_sync_profile_email.sql)
+create or replace function public.handle_user_email_change()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.profiles set email = new.email where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+-- Not callable through the REST API; it only ever runs as a trigger.
+revoke execute on function public.handle_user_email_change() from anon, authenticated, public;
+
+drop trigger if exists on_auth_user_email_changed on auth.users;
+create trigger on_auth_user_email_changed
+  after update of email on auth.users
+  for each row execute function public.handle_user_email_change();
+
+-- ── RPC lockdown (see migrations/20260902_lock_down_rpc.sql): only the service role may call the entitlement helpers
+revoke execute on function public.claim_free_allowance(uuid, text) from anon, authenticated, public;
+revoke execute on function public.release_free_allowance(uuid, text) from anon, authenticated, public;
+revoke execute on function public.handle_new_user() from anon, authenticated, public;
+revoke execute on function public.set_follow_accepted() from anon, authenticated, public;
+alter default privileges in schema public revoke execute on functions from anon, authenticated, public;

@@ -11,6 +11,8 @@ import { pageMeta, pricingJsonLd, JsonLd } from "@/lib/seo";
 import { CheckoutButton } from "@/components/CheckoutButton";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { createSupabaseServer } from "@/lib/supabase/server";
+import { isSubscribed } from "@/lib/entitlements";
 
 export const metadata = pageMeta({
   title: "Pricing",
@@ -19,7 +21,20 @@ export const metadata = pageMeta({
   path: "/pricing",
 });
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  // Top-ups are only purchasable on a live plan, so the cards are not rendered
+  // at all for anyone else, an offer that checkout would refuse is worse than
+  // no offer. The header already reads the session, so this page was never
+  // statically cached and the lookup costs nothing extra.
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("plan, plan_status").eq("id", user.id).single()
+    : { data: null };
+  const subscribed = isSubscribed(profile);
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -33,8 +48,9 @@ export default function PricingPage() {
           not seats.
         </h1>
         <p className="mt-4 text-muted max-w-xl">
-          Everything runs on credits. Subscriptions refill monthly at the best rate; top-ups never
-          expire. Every account gets its first website free.
+          Everything runs on credits. Subscriptions refill monthly at the best rate; subscribers
+          can top up any time, and those credits never expire. Every account gets its first
+          website free.
         </p>
 
         {/* Plans */}
@@ -79,22 +95,39 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Top-ups */}
+        {/* Top-ups, subscribers only */}
         <div className="mt-16">
           <p className="mono-label">CREDIT TOP-UPS · NEVER EXPIRE</p>
-          <div className="mt-6 grid sm:grid-cols-3 gap-6">
-            {TOPUPS.map((t) => (
-              <div key={t.id} className="card p-6 flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold">{t.name}</p>
-                  <p className="text-sm text-muted">${t.priceUsd} one-time</p>
-                </div>
-                <CheckoutButton kind="topup" id={t.id} className="btn-ghost !py-2 !px-4 text-sm">
-                  Buy
-                </CheckoutButton>
+          {subscribed ? (
+            <>
+              <p className="mt-2 text-sm text-muted">
+                For the months you outrun your plan. These credits never expire.
+              </p>
+              <div className="mt-6 grid sm:grid-cols-3 gap-6">
+                {TOPUPS.map((t) => (
+                  <div key={t.id} className="card p-6 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold">{t.name}</p>
+                      <p className="text-sm text-muted">${t.priceUsd} one-time</p>
+                    </div>
+                    <CheckoutButton
+                      kind="topup"
+                      id={t.id}
+                      className="btn-ghost !py-2 !px-4 text-sm"
+                    >
+                      Buy
+                    </CheckoutButton>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted max-w-xl">
+              An add-on for subscribers. Pick a plan above and top-ups unlock, from $
+              {TOPUPS[0].priceUsd} for {TOPUPS[0].credits.toLocaleString()} credits that never
+              expire.
+            </p>
+          )}
         </div>
 
         {/* What credits buy */}
