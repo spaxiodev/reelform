@@ -62,6 +62,12 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-video-preview": -1 },
   },
   formatDetection: { telephone: false, address: false },
+  // Search Console's "HTML tag" ownership check. Unset everywhere but
+  // production, where the token comes from the hosting environment, so
+  // preview deploys never claim the property.
+  verification: process.env.GOOGLE_SITE_VERIFICATION?.trim()
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION.trim() }
+    : undefined,
 };
 
 export const viewport: Viewport = {
