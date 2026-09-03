@@ -31,6 +31,8 @@ export default async function CreatePage() {
       <AppHeader
         links={[
           { href: "/dashboard", label: "My projects" },
+          { href: "/showcase", label: "Showcase" },
+          { href: "/pricing", label: "Pricing" },
         ]}
       >
         <AccountBadge />

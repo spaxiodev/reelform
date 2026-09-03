@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/AppHeader";
 import type { ReactNode } from "react";
+import { AccountBadge } from "@/components/AccountBadge";
 import { SignOutButton } from "@/components/DashboardActions";
 import { AccountNav } from "@/components/AccountNav";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -10,9 +11,14 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
       <AppHeader
         links={[
           { href: "/dashboard", label: "Dashboard" },
+          { href: "/create", label: "New site" },
+          { href: "/showcase", label: "Showcase" },
           { href: "/pricing", label: "Pricing" },
         ]}
       >
+        {/* Compact: the account pages already say whose account this is, so
+            the badge is here for the credit ring, not the name. */}
+        <AccountBadge compact />
         <SignOutButton />
       </AppHeader>
 

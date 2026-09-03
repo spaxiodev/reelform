@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppHeader } from "@/components/AppHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export function LegalShell({
@@ -15,10 +15,10 @@ export function LegalShell({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader links={[
-        { href: "/pricing", label: "Pricing" },
-        { href: "/login", label: "Sign in" },
-      ]} />
+      {/* Session-aware, so the legal and support pages are not a dead end:
+          a signed-in reader gets their account and dashboard back rather than
+          a "Sign in" link they have no use for. */}
+      <SiteHeader />
 
       <main id="main" className="flex-1 px-6 md:px-10 py-16 max-w-3xl mx-auto w-full">
         <p className="mono-label">{label}</p>

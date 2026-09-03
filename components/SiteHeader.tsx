@@ -3,10 +3,12 @@ import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 // Shared marketing-page header. Reads the session server-side so a signed-in
-// member never sees "Sign in / Start free" after clicking the logo.
+// member never sees "Sign in / Start free" after clicking the logo, and so the
+// way back into the app — dashboard and account — is one click from any
+// marketing or legal page rather than only from inside the app.
 //
-// Below `sm` the whole row won't fit: logo, two section links, an identity and
-// a call to action come to well over 390px, and the old single row simply ran
+// Below `sm` the whole row won't fit: logo, section links, an identity and a
+// call to action come to well over 390px, and the old single row simply ran
 // off the side of the screen. So the section links drop to their own row
 // underneath, which keeps every destination reachable without hiding anything
 // behind a menu button.
@@ -18,6 +20,20 @@ export async function SiteHeader() {
 
   const linkCls = "text-sm text-muted hover:text-ink transition-colors";
 
+  // Signed-in members get the two ways back into the app ahead of the
+  // marketing links; signed-out visitors get the marketing links and sign-in.
+  const links = user
+    ? [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/showcase", label: "Showcase" },
+        { href: "/pricing", label: "Pricing" },
+      ]
+    : [
+        { href: "/showcase", label: "Showcase" },
+        { href: "/pricing", label: "Pricing" },
+        { href: "/login", label: "Sign in" },
+      ];
+
   return (
     <header className="bg-bg border-b border-line">
       <div className="flex items-center justify-between gap-3 px-5 md:px-10 py-4 md:py-5">
@@ -28,19 +44,12 @@ export async function SiteHeader() {
           </span>
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
-          <Link href="/showcase" className={`hidden sm:inline ${linkCls}`}>
-            Showcase
-          </Link>
-          <Link href="/pricing" className={`hidden sm:inline ${linkCls}`}>
-            Pricing
-          </Link>
-          {user ? (
-            <AccountBadge />
-          ) : (
-            <Link href="/login" className={`hidden sm:inline ${linkCls}`}>
-              Sign in
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} className={`hidden sm:inline ${linkCls}`}>
+              {l.label}
             </Link>
-          )}
+          ))}
+          {user && <AccountBadge />}
           <Link href="/create" className="btn-primary !py-2 !px-3.5 sm:!px-4 !text-xs sm:!text-sm">
             {/* "Start building" is 150px of uppercase on a 390px screen. */}
             <span className="sm:hidden">Start</span>
@@ -49,19 +58,14 @@ export async function SiteHeader() {
         </nav>
       </div>
 
-      {/* Phone-only second row for the links dropped above. */}
+      {/* Phone-only second row for the links dropped above. The account badge
+          stays in the top row: on a phone it is the identity, not a link. */}
       <nav className="flex items-center gap-5 px-5 pb-3 sm:hidden">
-        <Link href="/showcase" className={linkCls}>
-          Showcase
-        </Link>
-        <Link href="/pricing" className={linkCls}>
-          Pricing
-        </Link>
-        {!user && (
-          <Link href="/login" className={linkCls}>
-            Sign in
+        {links.map((l) => (
+          <Link key={l.href} href={l.href} className={linkCls}>
+            {l.label}
           </Link>
-        )}
+        ))}
       </nav>
     </header>
   );

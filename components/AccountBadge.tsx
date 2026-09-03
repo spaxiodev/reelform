@@ -53,7 +53,11 @@ export async function AccountBadge({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/account"
-      className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-3 -my-1 hover:bg-bg-raise transition-colors"
+      className={`flex items-center gap-2.5 rounded-full py-1 pl-1 -my-1 hover:bg-bg-raise transition-colors ${
+        // Compact hides the name, so the right padding that made room for it
+        // would only leave a lopsided gap.
+        compact ? "pr-1" : "pr-1 sm:pr-3"
+      }`}
       title={`Signed in as ${profile?.full_name ?? profile?.username ?? user.email}`}
     >
       <CreditRing credits={profile?.credits ?? 0} plan={profile?.plan} size={30}>

@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 // Landing nav: two separate frosted pills (logo left, actions right) rather
 // than one centered bar: a distinct layout, with a coral CTA instead of a
 // black pill. Fixed so it floats over the scrubbing video hero.
+//
+// A signed-in member gets their badge here too. The home page is where people
+// land from a bookmark or a shared link, and without it the only way back to
+// the account was to guess a URL or scroll to the footer.
 export async function LandingNav() {
   const supabase = await createSupabaseServer();
   const {
@@ -39,6 +44,11 @@ export async function LandingNav() {
 
         {/* Actions pill */}
         <nav className="glass-pill flex items-center gap-1 rounded-full px-1.5 py-1.5 sm:px-2">
+          {user && (
+            <Link href="/dashboard" className={linkCls}>
+              Dashboard
+            </Link>
+          )}
           <Link href="/showcase" className={linkCls}>
             Showcase
           </Link>
@@ -46,9 +56,13 @@ export async function LandingNav() {
             Pricing
           </Link>
           {user ? (
-            <Link href="/create" className={ctaCls}>
-              {cta}
-            </Link>
+            <>
+              {/* compact: the pill has no room for a name beside the CTA. */}
+              <AccountBadge compact />
+              <Link href="/create" className={ctaCls}>
+                {cta}
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/login" className={linkCls}>

@@ -666,6 +666,13 @@ export function Studio({
       {/* ── Top bar: identity + credits + (once built) export actions ── */}
       <header className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-line shrink-0 bg-bg">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* The studio is a full-screen workspace, so this row is the only
+              way out of it. Logo home, then the breadcrumb back to the
+              project list, then where you actually are. */}
+          <Link href="/" className="flex items-center shrink-0" title="Reelform home">
+            <span className="rec-dot" aria-hidden />
+            <span className="sr-only">Reelform home</span>
+          </Link>
           <Link href="/dashboard" className="mono-label hover:!text-ink transition-colors shrink-0">
             ← DASHBOARD
           </Link>
@@ -673,11 +680,24 @@ export function Studio({
           <span className="font-medium truncate">{name}</span>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 overflow-x-auto sm:overflow-visible no-scrollbar shrink-0">
+          {/* The credit count doubles as the way into the account: it is the
+              number people click when they want to know where it went. */}
           {isAdmin ? (
-            <span className="mono-label !text-primary mr-2">ADMIN · UNLIMITED</span>
+            <Link
+              href="/account"
+              className="mono-label !text-primary mr-2 hover:opacity-70 transition-opacity shrink-0"
+            >
+              ADMIN · UNLIMITED
+            </Link>
           ) : (
             <>
-              <span className="mono-label !text-primary mr-2">{credits.toLocaleString()} CREDITS</span>
+              <Link
+                href="/account"
+                title="Your account"
+                className="mono-label !text-primary mr-2 hover:opacity-70 transition-opacity shrink-0"
+              >
+                {credits.toLocaleString()} CREDITS
+              </Link>
               <Link href="/pricing" className="btn-ghost !py-2 !px-3.5 !text-xs shrink-0">
                 Top up
               </Link>

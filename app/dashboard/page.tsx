@@ -41,6 +41,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen flex flex-col bg-bg-raise">
       <AppHeader
         links={[
+          { href: "/create", label: "New site" },
           { href: "/showcase", label: "Showcase" },
           { href: "/pricing", label: "Pricing" },
         ]}
