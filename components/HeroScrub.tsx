@@ -2,34 +2,37 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { canScrub, playSafely, prefersStill } from "@/lib/video";
-
-// All-intra (every frame a keyframe) 720p re-encode of the reference clip, so
-// scroll-driven currentTime seeks resolve instantly instead of stuttering.
-// That density costs bytes, which is a fair trade on a desktop connection and a
-// bad one on a phone that isn't going to scrub at all, so touch devices get a
-// smaller, normally-encoded loop instead.
-const SCRUB_SRC = "/ReferenceVids/hero-scrub.mp4";
-const LOOP_SRC = "/ReferenceVids/hero-scrub-mobile.mp4";
-const POSTER = "/ReferenceVids/hero-scrub.jpg";
+import {
+  createScrollScrubber,
+  canScrub,
+  loadScrubSource,
+  playSafely,
+  prefersStill,
+  primeForSeeking,
+  scrubSource,
+  LOOP_SRC,
+  SCRUB_POSTER,
+} from "@/lib/video";
 
 // Full-screen hero whose background video scrubs frame-by-frame with scroll.
 // The overlaid text fades and rises away past a threshold, then the pinned
 // stage releases and the rest of the page flows underneath.
 //
-// On phones the video simply loops: see canScrub() for why. The pinned stage
-// also shrinks there, because without scrubbing there's nothing to scroll
-// through, and 240vh of unmoving hero is just a long wall between the visitor
-// and the page.
+// Phones scrub too, on a smaller all-intra encode: the thing that used to make
+// scrubbing stutter there was seeking into a half-downloaded file, not the
+// hardware. So the clip is fetched whole before a single seek is issued, and
+// the poster covers the element until it lands (see loadScrubSource).
 export function HeroScrub() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const cueRef = useRef<HTMLDivElement>(null);
-  const durationRef = useRef(0);
-  // Undecided until the effect measures the device. Rendering no <source> on
-  // the server keeps us from shipping the 7MB scrub encode to a phone.
+  // Undecided until the effect measures the device: rendering no source on the
+  // server keeps us from shipping a scrub encode to someone on Save-Data.
   const [scrubbing, setScrubbing] = useState<boolean | null>(null);
+  // The clip is in memory and seeking is instant. Until then the poster shows,
+  // so nobody scrolls through the laggy first second of a streaming seek.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -42,115 +45,85 @@ export function HeroScrub() {
     // representative frame and fade the copy without moving, scaling or
     // blurring it. The hero still reads, it just stops animating.
     const stillOnly = prefersStill();
-    const scrub = canScrub();
+    const scrub = !stillOnly && canScrub();
     setScrubbing(scrub);
 
-    video.src = scrub ? SCRUB_SRC : LOOP_SRC;
-    video.load();
+    // The element has a frame to show: cross-fade it in over the poster. In
+    // scrub mode this can only fire after the buffered clip is attached, which
+    // is exactly when scrubbing becomes instant.
+    const onLoaded = () => setReady(true);
+    video.addEventListener("loadeddata", onLoaded, { once: true });
 
-    if (!scrub && !stillOnly) {
+    let cancelled = false;
+
+    if (scrub) {
+      loadScrubSource(scrubSource()).then((src) => {
+        if (cancelled) return;
+        video.src = src;
+        video.load();
+        primeForSeeking(video);
+      });
+    } else if (!stillOnly) {
+      // Save-Data / 2G: a small ordinary loop rather than a scrub encode.
+      video.src = LOOP_SRC;
+      video.load();
       video.loop = true;
       playSafely(video);
     }
+    // Under prefers-reduced-motion no video loads at all. The poster behind the
+    // element is the hero, which is both the honest reading of the preference
+    // and megabytes we don't spend to show a still frame.
 
-    const readDuration = () => {
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        durationRef.current = video.duration;
-        // Park on a frame with the subject in it rather than a black first frame.
-        if (stillOnly) {
-          try {
-            video.currentTime = video.duration * 0.25;
-          } catch {
-            /* seek unsupported before metadata settles: harmless */
-          }
+    const stop = createScrollScrubber({
+      wrap,
+      video,
+      scrub,
+      onProgress: (progress) => {
+        // Text leaves between 40% and 72% of the hero scroll.
+        const exit = Math.min(Math.max((progress - 0.4) / 0.32, 0), 1);
+        text.style.opacity = String(1 - exit);
+        if (!stillOnly) {
+          text.style.transform = `translateY(${-exit * 48}px) scale(${1 - exit * 0.04})`;
+          text.style.filter = `blur(${exit * 5}px)`;
         }
-      }
-    };
-    readDuration();
-    video.addEventListener("loadedmetadata", readDuration);
+        text.style.pointerEvents = exit > 0.6 ? "none" : "auto";
 
-    // Coalesced seeking: we only ever hold one *target* time and issue the next
-    // seek when the previous one finishes. Fast scrolls collapse to the latest
-    // position instead of queuing a backlog of slow seeks (the source of jank).
-    let targetTime = 0;
-    let seeking = false;
+        if (cueRef.current) {
+          cueRef.current.style.opacity = String(1 - Math.min(progress / 0.08, 1));
+        }
+      },
+    });
 
-    const applySeek = () => {
-      const d = durationRef.current;
-      if (!d || seeking) return;
-      if (Math.abs(video.currentTime - targetTime) < 0.01) return;
-      seeking = true;
-      try {
-        video.currentTime = targetTime;
-      } catch {
-        seeking = false;
-      }
-    };
-    const onSeeked = () => {
-      seeking = false;
-      applySeek(); // chase the latest target if scroll moved on mid-seek
-    };
-    video.addEventListener("seeked", onSeeked);
-
-    let ticking = false;
-    const update = () => {
-      ticking = false;
-      const total = wrap.offsetHeight - window.innerHeight;
-      const scrolled = -wrap.getBoundingClientRect().top;
-      const progress = total > 0 ? Math.min(Math.max(scrolled / total, 0), 1) : 0;
-
-      const d = durationRef.current;
-      if (d && scrub && !stillOnly) {
-        targetTime = progress * (d - 0.05);
-        applySeek();
-      }
-
-      // Text leaves between 40% and 72% of the hero scroll.
-      const exit = Math.min(Math.max((progress - 0.4) / 0.32, 0), 1);
-      text.style.opacity = String(1 - exit);
-      if (!stillOnly) {
-        text.style.transform = `translateY(${-exit * 48}px) scale(${1 - exit * 0.04})`;
-        text.style.filter = `blur(${exit * 5}px)`;
-      }
-      text.style.pointerEvents = exit > 0.6 ? "none" : "auto";
-
-      if (cueRef.current) {
-        cueRef.current.style.opacity = String(1 - Math.min(progress / 0.08, 1));
-      }
-    };
-
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(update);
-      }
-    };
-
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
     return () => {
-      video.removeEventListener("loadedmetadata", readDuration);
-      video.removeEventListener("seeked", onSeeked);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      cancelled = true;
+      video.removeEventListener("loadeddata", onLoaded);
+      stop();
     };
   }, []);
 
   return (
     <section
       ref={wrapRef}
-      className={`relative ${scrubbing === false ? "h-[150svh]" : "h-[240vh]"}`}
+      className={`relative ${
+        scrubbing === false ? "h-[150svh]" : "h-[200vh] md:h-[240vh]"
+      }`}
     >
-      <div className="sticky top-0 h-[100svh] w-full overflow-hidden bg-ink">
+      {/* The poster sits on the stage, not just on the <video>, so the clip can
+          cross-fade in over it once it's buffered instead of popping. */}
+      <div
+        className="sticky top-0 h-[100svh] w-full overflow-hidden bg-ink bg-cover bg-center"
+        style={{ backgroundImage: `url(${SCRUB_POSTER})` }}
+      >
         <video
           ref={videoRef}
-          poster={POSTER}
+          poster={SCRUB_POSTER}
           muted
           playsInline
           preload="none"
           disablePictureInPicture
-          className="absolute inset-0 h-full w-full object-cover"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
         />
         {/* Sunset-tinted legibility scrim + vignette */}
         <div
