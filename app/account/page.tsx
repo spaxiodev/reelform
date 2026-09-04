@@ -9,6 +9,7 @@ import { ledgerLabel } from "@/lib/ledger";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { FollowRequests } from "@/components/FollowRequests";
+import { EmailPreferences } from "@/components/EmailPreferences";
 
 export const metadata = { title: "Account", ...PRIVATE_PAGE };
 
@@ -23,7 +24,7 @@ export default async function AccountOverviewPage() {
     supabase
       .from("profiles")
       .select(
-        "email, username, full_name, is_private, avatar_url, credits, plan, plan_status, stripe_customer_id, created_at"
+        "email, username, full_name, is_private, avatar_url, credits, plan, plan_status, stripe_customer_id, created_at, marketing_opt_in, marketing_consent_at"
       )
       .eq("id", user.id)
       .single(),
@@ -142,6 +143,20 @@ export default async function AccountOverviewPage() {
             </dd>
           </div>
         </dl>
+      </section>
+
+      {/* Email */}
+      <section className="card p-6 md:p-8">
+        <h2 className="text-xl font-medium tracking-tight">Email</h2>
+        <p className="mt-2 text-sm text-muted">
+          What we send to {profile?.email ?? user.email}, beyond receipts and account notices.
+        </p>
+        <div className="mt-5">
+          <EmailPreferences
+            initialOptIn={profile?.marketing_opt_in ?? false}
+            initialConsentAt={profile?.marketing_consent_at ?? null}
+          />
+        </div>
       </section>
 
       {/* Plan */}

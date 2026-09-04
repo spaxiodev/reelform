@@ -38,6 +38,16 @@ alter table public.profiles add column if not exists created_at timestamptz not 
 -- origin rather than into two separate wallets.
 alter table public.profiles add column if not exists subscription_credits integer not null default 0;
 
+-- Email marketing consent (see migrations/20260904_email_marketing.sql).
+-- Opt-in only, unchecked by default, with the when/how of the consent kept as
+-- proof. email_bounced_at is set from the provider's bounce/complaint webhook
+-- and silences every non-auth email to that address.
+alter table public.profiles add column if not exists marketing_opt_in boolean not null default false;
+alter table public.profiles add column if not exists marketing_consent_at timestamptz;
+alter table public.profiles add column if not exists marketing_consent_source text;
+alter table public.profiles add column if not exists marketing_unsubscribed_at timestamptz;
+alter table public.profiles add column if not exists email_bounced_at timestamptz;
+
 alter table public.profiles drop constraint if exists profiles_subscription_credits_bounds;
 alter table public.profiles add constraint profiles_subscription_credits_bounds
   check (subscription_credits >= 0 and subscription_credits <= credits);
@@ -351,6 +361,7 @@ as $$
 declare
   v_username text := nullif(regexp_replace(coalesce(new.raw_user_meta_data->>'username', ''), '[^A-Za-z0-9_]', '', 'g'), '');
   v_full_name text := nullif(trim(coalesce(new.raw_user_meta_data->>'full_name', '')), '');
+  v_opt_in boolean := coalesce(new.raw_user_meta_data->>'marketing_opt_in', 'false') = 'true';
 begin
   if v_username is null then
     v_username := nullif(regexp_replace(split_part(coalesce(new.email, ''), '@', 1), '[^A-Za-z0-9_]', '', 'g'), '');
@@ -365,8 +376,16 @@ begin
 
   -- No signup credits: new accounts get one free build (see the free_*_used
   -- flags above) and buy a subscription from there.
-  insert into public.profiles (id, email, username, full_name, credits)
-  values (new.id, new.email, v_username, v_full_name, 0);
+  insert into public.profiles (
+    id, email, username, full_name, credits,
+    marketing_opt_in, marketing_consent_at, marketing_consent_source
+  )
+  values (
+    new.id, new.email, v_username, v_full_name, 0,
+    v_opt_in,
+    case when v_opt_in then now() end,
+    case when v_opt_in then 'signup_form' end
+  );
   return new;
 end;
 $$;
@@ -669,9 +688,44 @@ create trigger on_auth_user_email_changed
   after update of email on auth.users
   for each row execute function public.handle_user_email_change();
 
+-- ── Email marketing: consent stamps + send log ───────────────────────
+create or replace function public.stamp_marketing_consent()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.marketing_opt_in and not old.marketing_opt_in then
+    new.marketing_consent_at := now();
+    new.marketing_unsubscribed_at := null;
+  elsif old.marketing_opt_in and not new.marketing_opt_in then
+    new.marketing_unsubscribed_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_profile_marketing_change on public.profiles;
+create trigger on_profile_marketing_change
+  before update of marketing_opt_in on public.profiles
+  for each row execute function public.stamp_marketing_consent();
+
+create table if not exists public.email_log (
+  id bigint generated always as identity primary key,
+  user_id uuid references public.profiles (id) on delete cascade,
+  email text not null,
+  kind text not null,
+  provider_id text,
+  created_at timestamptz not null default now()
+);
+create index if not exists email_log_user_kind_idx on public.email_log (user_id, kind);
+create index if not exists email_log_created_idx on public.email_log (created_at desc);
+alter table public.email_log enable row level security;
+
 -- ── RPC lockdown (see migrations/20260902_lock_down_rpc.sql): only the service role may call the entitlement helpers
 revoke execute on function public.claim_free_allowance(uuid, text) from anon, authenticated, public;
 revoke execute on function public.release_free_allowance(uuid, text) from anon, authenticated, public;
 revoke execute on function public.handle_new_user() from anon, authenticated, public;
+revoke execute on function public.stamp_marketing_consent() from anon, authenticated, public;
 revoke execute on function public.set_follow_accepted() from anon, authenticated, public;
 alter default privileges in schema public revoke execute on functions from anon, authenticated, public;

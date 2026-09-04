@@ -11,17 +11,22 @@ export const metadata = pageMeta({
 
 export default function PrivacyPage() {
   return (
-    <LegalShell label="LEGAL" title="Privacy Policy" updated="July 19, 2026">
+    <LegalShell label="LEGAL" title="Privacy Policy" updated="September 4, 2026">
       <LegalSection heading="1. Who we are">
         <p>
-          Reelform (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is operated by Polidori.dev. This policy
-          explains what personal data we collect when you use reelform at polidori.dev (the
-          &ldquo;Service&rdquo;), why we collect it, and the choices you have. For any privacy
+          Reelform (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is operated by Polidori.dev, based in
+          Quebec, Canada. This policy explains what personal data we collect when you use Reelform
+          (the &ldquo;Service&rdquo;), why we collect it, and the choices you have. For any privacy
           question or request, contact us at{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">
             {CONTACT_EMAIL}
           </a>
           .
+        </p>
+        <p>
+          Under Quebec&apos;s Act respecting the protection of personal information in the private
+          sector (Law 25), the person in charge of the protection of personal information at
+          Polidori.dev can be reached at that same address.
         </p>
       </LegalSection>
 
@@ -52,7 +57,10 @@ export default function PrivacyPage() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li>provide the Service: generate videos, build sites, and store your projects;</li>
           <li>process payments and manage your credit balance;</li>
-          <li>send transactional emails (receipts, account notices);</li>
+          <li>
+            send account emails: a welcome message, receipts, plan changes, and security notices;
+          </li>
+          <li>send product updates and tips by email, only if you asked us to (see section 5);</li>
           <li>keep the Service secure and prevent abuse;</li>
           <li>comply with legal obligations.</li>
         </ul>
@@ -81,12 +89,47 @@ export default function PrivacyPage() {
             <strong className="text-ink">Stripe</strong>: payment processing;
           </li>
           <li>
-            <strong className="text-ink">Vercel</strong>: hosting and infrastructure.
+            <strong className="text-ink">Vercel</strong>: hosting and infrastructure;
+          </li>
+          <li>
+            <strong className="text-ink">Resend</strong>: delivery of the emails we send you. Your
+            email address, first name, and whether you have opted in to updates are shared with
+            it for that purpose.
           </li>
         </ul>
+        <p>
+          Some of these providers store data outside Quebec and Canada, chiefly in the United
+          States. Where that is the case, we have assessed the transfer as required by Law 25 and
+          rely on each provider&apos;s contractual data-protection commitments.
+        </p>
       </LegalSection>
 
-      <LegalSection heading="5. Cookies">
+      <LegalSection heading="5. Marketing email">
+        <p>
+          We send two kinds of email. <strong className="text-ink">Account email</strong> (a
+          welcome message, receipts, plan changes, password and security notices) is part of
+          running your account and is sent to every account holder.{" "}
+          <strong className="text-ink">Product updates and tips</strong> are optional. We send
+          them only if you ticked the box at signup or turned them on in your account, in line
+          with Canada&apos;s Anti-Spam Legislation (CASL) and Law 25. The box is never pre-checked.
+        </p>
+        <p>
+          We record when and how you gave that consent, and quote it back to you at the bottom of
+          every such email. You can withdraw it at any time, at no cost, from the unsubscribe link
+          in any of those emails, from the Email section of your{" "}
+          <a href="/account" className="text-primary underline">
+            account
+          </a>
+          , or by replying to any email with &ldquo;unsubscribe&rdquo;. Withdrawal takes effect
+          immediately.
+        </p>
+        <p>
+          We do not buy, rent, or share email lists, and we do not send email on anyone
+          else&apos;s behalf.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="6. Cookies">
         <p>
           We use only essential cookies: session cookies that keep you signed in and security
           cookies used by our payment and authentication providers. We do not use advertising or
@@ -94,33 +137,36 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. Data retention">
+      <LegalSection heading="7. Data retention">
         <p>
           We keep your account data and projects for as long as your account is active. If you
           delete your account, we delete your personal data and content within 30 days, except
-          where we must retain records for legal or accounting purposes (e.g. invoices).
+          where we must retain records for legal or accounting purposes (e.g. invoices). A log of
+          the emails we sent you (address, type of email, date) is kept for the same period so we
+          can show what was sent and under what consent.
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Your rights">
+      <LegalSection heading="8. Your rights">
         <p>
-          Depending on where you live (including under the GDPR and CCPA), you may have the right
-          to access, correct, export, or delete your personal data, and to object to or restrict
-          certain processing. To exercise any of these rights, email{" "}
+          Under Law 25, and depending on where you live also under the GDPR and CCPA, you have the
+          right to access, correct, export, or delete your personal data, to withdraw consent, and
+          to object to or restrict certain processing. To exercise any of these rights, email{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">
             {CONTACT_EMAIL}
-          </a>. We respond within 30 days.
+          </a>. We respond within 30 days. If you are not satisfied with our answer, you can
+          complain to the Commission d&apos;accès à l&apos;information du Québec.
         </p>
       </LegalSection>
 
-      <LegalSection heading="8. Security">
+      <LegalSection heading="9. Security">
         <p>
           Data is encrypted in transit (TLS) and at rest by our infrastructure providers. Access to
           production data is limited to what is strictly necessary to operate the Service.
         </p>
       </LegalSection>
 
-      <LegalSection heading="9. Children">
+      <LegalSection heading="10. Children">
         <p>
           The Service is not directed at children under 16, and we do not knowingly collect their
           data. If you believe a child has provided us personal data, contact us and we will delete
@@ -128,7 +174,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="10. Changes to this policy">
+      <LegalSection heading="11. Changes to this policy">
         <p>
           We may update this policy from time to time. Material changes will be announced on this
           page with an updated date, and by email for significant changes.

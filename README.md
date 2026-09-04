@@ -67,7 +67,29 @@ Higgsfield's own DoP tiers are image-to-video (they require an input frame), so 
    - Locally: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 4. Enable the **customer portal** (Settings → Billing → Customer portal) so users can cancel/manage plans.
 
-### 5. Run locally
+### 5. Email (Resend)
+
+Product email goes out through [Resend](https://resend.com): a welcome message once the account is confirmed, receipts for top-ups and plan starts/renewals, a notice when a plan is canceled, and, for accounts that opted in, a short tips drip. The auth emails (confirm, reset password) still go through Supabase, see step 1.
+
+1. Verify your sending domain under **Domains** and add the DNS records it gives you.
+2. Create an API key → `RESEND_API_KEY`. Set `EMAIL_FROM` to a sender on that domain.
+3. `openssl rand -base64 48` → `EMAIL_UNSUBSCRIBE_SECRET`, and set `NEXT_PUBLIC_POSTAL_ADDRESS` to the business mailing address. Marketing email stays off until both exist.
+4. **Webhooks** → add `https://your-app/api/email/webhook` for `email.bounced`, `email.complained`, `contact.created`, `contact.updated` → `RESEND_WEBHOOK_SECRET`. Bounces and complaints stop further email to that address; contact events keep the opt-in flag in sync with anything done in Resend's UI.
+5. Optional: create an **Audience** → `RESEND_AUDIENCE_ID`. Every opt-in and opt-out is mirrored there, so one-off newsletters can be written and sent from **Broadcasts** without touching code. Put `{{{RESEND_UNSUBSCRIBE_URL}}}` in every broadcast; those unsubscribes flow back through the webhook above.
+6. The drip runs daily from `vercel.json` → `/api/cron/email-drip`. Vercel provisions `CRON_SECRET`; locally, set one and `curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/email-drip`.
+7. To send the Supabase auth emails through Resend as well: **Auth → SMTP settings**, host `smtp.resend.com`, port `465`, user `resend`, password = the API key, sender = your `EMAIL_FROM` address.
+
+**Consent and the law.** The app is built to CASL (Canada's anti-spam law) and Quebec's Law 25:
+
+- Marketing email needs express opt-in. The signup checkbox is unchecked and separate from the terms; Google signups carry the same checkbox through the callback.
+- Every consent is recorded with its date and source (`marketing_consent_at`, `marketing_consent_source`) and quoted back in the footer of each marketing email.
+- Every marketing email carries the sender's legal name, mailing address, contact email, a working unsubscribe link, and `List-Unsubscribe` headers (one-click). Unsubscribing takes effect immediately and never requires signing in.
+- Account email (receipts, plan changes, welcome) is sent regardless of consent, as CASL allows for transactional messages, but still stops for a bounced or complained address.
+- `email_log` keeps one row per message sent (who, what, when) as the audit trail, and is deleted with the account.
+
+The copy lives in `lib/email/templates.ts`; the frame that wraps it in `lib/email/layout.ts`. Adding a drip step is one entry in `DRIP` at the bottom of the templates file.
+
+### 6. Run locally
 
 ```bash
 cp .env.example .env.local   # fill in everything above

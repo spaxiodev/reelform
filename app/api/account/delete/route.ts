@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+import { removeContact } from "@/lib/email/resend";
 
 // Permanently deletes the signed-in user's account. Cancels any active Stripe
 // subscription first, then removes the auth user, profiles, projects,
@@ -16,9 +17,19 @@ export async function POST() {
   const admin = createSupabaseAdmin();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_subscription_id")
+    .select("stripe_subscription_id, email")
     .eq("id", user.id)
     .single();
+
+  // Law 25: deleting the account deletes the personal data we hold on it,
+  // including the copy of the address mirrored to the email provider.
+  if (profile?.email) {
+    try {
+      await removeContact(profile.email);
+    } catch (err) {
+      console.error("account delete: audience removal failed", err);
+    }
+  }
 
   if (profile?.stripe_subscription_id) {
     try {

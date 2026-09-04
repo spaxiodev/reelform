@@ -4,6 +4,8 @@ import { getStripe, planForPriceId } from "@/lib/stripe";
 import { rolloverCap } from "@/lib/pricing";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { grantCredits, grantSubscriptionCredits } from "@/lib/credits";
+import { sendTransactional } from "@/lib/email/send";
+import { planCanceled, planRenewed, planStarted, topupReceipt } from "@/lib/email/templates";
 
 // Stripe -> Reelform fulfillment.
 //  - checkout.session.completed (mode=payment): credit top-up
@@ -25,6 +27,11 @@ export async function POST(request: NextRequest) {
 
   const admin = createSupabaseAdmin();
 
+  async function balanceOf(userId: string): Promise<number> {
+    const { data } = await admin.from("profiles").select("credits").eq("id", userId).single();
+    return data?.credits ?? 0;
+  }
+
   async function userIdForCustomer(customerId: string): Promise<string | null> {
     const { data } = await admin
       .from("profiles")
@@ -42,6 +49,19 @@ export async function POST(request: NextRequest) {
         const credits = parseInt(session.metadata.credits ?? "0", 10);
         if (userId && credits > 0) {
           await grantCredits(userId, credits, "topup", session.id);
+          const balance = await balanceOf(userId);
+          await sendTransactional(
+            userId,
+            "topup_receipt",
+            (r) =>
+              topupReceipt(r, {
+                credits,
+                amountCents: session.amount_total ?? 0,
+                currency: session.currency ?? "usd",
+                balance,
+              }),
+            { idempotencyKey: `topup:${session.id}` }
+          );
         }
       }
       break;
@@ -74,6 +94,25 @@ export async function POST(request: NextRequest) {
         rolloverCap(plan),
         invoice.id ?? undefined
       );
+
+      // First invoice of a subscription vs. a monthly cycle. Stripe reports
+      // the reason; anything else (a proration, a manual invoice) gets the
+      // renewal wording, which is the one that stays true.
+      const first = invoice.billing_reason === "subscription_create";
+      const balance = await balanceOf(userId);
+      const details = {
+        planId: plan.id,
+        amountCents: invoice.amount_paid ?? 0,
+        currency: invoice.currency ?? "usd",
+        credits: plan.creditsPerMonth,
+        balance,
+      };
+      await sendTransactional(
+        userId,
+        first ? "plan_started" : "plan_renewed",
+        (r) => (first ? planStarted(r, details) : planRenewed(r, details)),
+        { idempotencyKey: `invoice:${invoice.id}` }
+      );
       break;
     }
 
@@ -95,10 +134,21 @@ export async function POST(request: NextRequest) {
       const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
       const userId = await userIdForCustomer(customerId);
       if (!userId) break;
+      const { data: before } = await admin
+        .from("profiles")
+        .select("plan, credits")
+        .eq("id", userId)
+        .single();
       await admin
         .from("profiles")
         .update({ plan: "free", plan_status: "canceled", stripe_subscription_id: null })
         .eq("id", userId);
+      await sendTransactional(
+        userId,
+        "plan_canceled",
+        (r) => planCanceled(r, { planId: before?.plan ?? "free", balance: before?.credits ?? 0 }),
+        { idempotencyKey: `sub-deleted:${sub.id}` }
+      );
       break;
     }
   }

@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { after } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendTransactional, setMarketingConsent } from "@/lib/email/send";
+import { welcome } from "@/lib/email/templates";
 
 // Handles every redirect back from Supabase auth:
 //
@@ -43,6 +47,35 @@ function safeNext(raw: string | null, fallback: string): string {
   return raw;
 }
 
+// An account counts as brand new for this long after creation. Google sign-ins
+// land here every time, so the welcome mail (and the consent ticked on the
+// signup form) must only apply to the first arrival.
+const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Post-verification side effects: welcome email for a fresh account, and the
+// marketing consent a Google signup ticked before leaving for Google. Runs
+// after the redirect is sent, so it never slows the sign-in down. Both steps
+// are idempotent (email_log, and consent only applied where none is recorded).
+async function afterSignIn(userId: string, createdAt: string, wantsMarketing: boolean): Promise<void> {
+  const isNew = Date.now() - new Date(createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS;
+  if (!isNew) return;
+
+  if (wantsMarketing) {
+    const { data } = await createSupabaseAdmin()
+      .from("profiles")
+      .select("marketing_opt_in, marketing_consent_at, marketing_unsubscribed_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (data && !data.marketing_opt_in && !data.marketing_consent_at && !data.marketing_unsubscribed_at) {
+      await setMarketingConsent(userId, true, "signup_google").catch((err) =>
+        console.error("[auth/callback] consent record failed", { userId, err })
+      );
+    }
+  }
+
+  await sendTransactional(userId, "welcome", welcome, { once: true });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const origin = request.nextUrl.origin;
@@ -83,6 +116,12 @@ export async function GET(request: NextRequest) {
       const reason = type === "recovery" ? "recovery_expired" : "otp_expired";
       return NextResponse.redirect(`${origin}/login?error=${reason}`);
     }
+    if (type === "signup") {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) after(() => afterSignIn(user.id, user.created_at, false));
+    }
     const next =
       type === "recovery"
         ? DEFAULT_NEXT.recovery
@@ -95,7 +134,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data: exchanged, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     // Almost always the PKCE verifier cookie: it is host-only, so a flow that
@@ -106,6 +145,12 @@ export async function GET(request: NextRequest) {
       host: request.nextUrl.host,
     });
     return NextResponse.redirect(`${origin}/login?error=exchange_failed`);
+  }
+
+  const user = exchanged.user;
+  if (user) {
+    const wantsMarketing = searchParams.get("marketing") === "1";
+    after(() => afterSignIn(user.id, user.created_at, wantsMarketing));
   }
 
   return NextResponse.redirect(`${origin}${safeNext(searchParams.get("next"), "/dashboard")}`);
