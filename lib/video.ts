@@ -85,9 +85,16 @@ export function loadScrubSource(src: string): Promise<string> {
  * first `currentTime` write can take hundreds of milliseconds. A play/pause
  * pair costs one frame and makes every later seek prompt. Autoplay refusals
  * (Low Power Mode, Data Saver) are fine here, since seeking works regardless.
+ *
+ * The returned promise settles once the pause has actually landed. Callers
+ * that reveal the element on a timer of their own (a cross-fade in from the
+ * poster) should wait for it: revealing before the pause lands risks catching
+ * the video mid "play," which shows as a frame or two of unrequested motion
+ * right as it fades in, worse under the load a fresh page start puts on the
+ * main thread.
  */
-export function primeForSeeking(video: HTMLVideoElement): void {
-  video
+export function primeForSeeking(video: HTMLVideoElement): Promise<void> {
+  return video
     .play()
     .then(() => video.pause())
     .catch(() => {});

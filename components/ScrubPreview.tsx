@@ -47,8 +47,18 @@ export function ScrubPreview() {
 
     // The element has a frame to show: cross-fade it in over the poster. In
     // scrub mode this can only fire after the buffered clip is attached, which
-    // is exactly when scrubbing becomes instant.
-    const onLoaded = () => setReady(true);
+    // is exactly when scrubbing becomes instant. It also waits on the seek
+    // priming below, so the reveal never catches the prime's play/pause mid
+    // "play" and shows a stray frame of motion.
+    let loadedData = false;
+    let primed = !scrub;
+    const revealIfReady = () => {
+      if (loadedData && primed) setReady(true);
+    };
+    const onLoaded = () => {
+      loadedData = true;
+      revealIfReady();
+    };
     video.addEventListener("loadeddata", onLoaded, { once: true });
 
     const clock = (time: number, duration: number) => {
@@ -74,7 +84,11 @@ export function ScrubPreview() {
         if (cancelled) return;
         video.src = src;
         video.load();
-        primeForSeeking(video);
+        primeForSeeking(video).then(() => {
+          if (cancelled) return;
+          primed = true;
+          revealIfReady();
+        });
       });
     } else if (!stillOnly) {
       // Save-Data / 2G: a small ordinary loop rather than a scrub encode.
