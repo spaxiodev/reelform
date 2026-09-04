@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, ensureStripeCustomer } from "@/lib/stripe";
 import { appUrl } from "@/lib/env";
 
 // Opens the Stripe customer portal (manage/cancel subscription, invoices).
@@ -16,7 +16,7 @@ export async function POST() {
   const admin = createSupabaseAdmin();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, email")
     .eq("id", user.id)
     .single();
 
@@ -24,8 +24,9 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account yet" }, { status: 400 });
   }
 
+  const customerId = await ensureStripeCustomer(admin, user, profile);
   const session = await stripe.billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
+    customer: customerId,
     return_url: `${appUrl()}/dashboard`,
   });
   return NextResponse.json({ url: session.url });

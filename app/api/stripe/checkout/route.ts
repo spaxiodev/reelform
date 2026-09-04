@@ -1,7 +1,7 @@
-﻿import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStripe, priceIdFor } from "@/lib/stripe";
+import { getStripe, priceIdFor, ensureStripeCustomer } from "@/lib/stripe";
 import { PLANS, TOPUPS } from "@/lib/pricing";
 import { isSubscribed } from "@/lib/entitlements";
 import { appUrl as canonicalAppUrl } from "@/lib/env";
@@ -39,15 +39,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let customerId = profile?.stripe_customer_id as string | null;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: profile?.email ?? user.email ?? undefined,
-      metadata: { supabase_user_id: user.id },
-    });
-    customerId = customer.id;
-    await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
-  }
+  const customerId = await ensureStripeCustomer(admin, user, profile);
 
   if (body.kind === "plan") {
     const plan = PLANS.find((p) => p.id === body.id);
