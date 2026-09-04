@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/SiteFooter";
+import { BrandMark } from "@/components/BrandMark";
 
 // The narrow, centred frame every sign-in style page shares: wordmark up top,
 // one column of content, the site footer below. Keeps /login,
@@ -22,7 +23,7 @@ export function AuthShell({
           pages stay reachable from here without a back button. */}
       <header className="flex items-center justify-between gap-4 px-6 md:px-10 py-5 border-b border-line">
         <Link href="/" className="flex items-center gap-3 w-fit">
-          <span className="rec-dot" aria-hidden />
+          <BrandMark />
           <span className="font-semibold tracking-tight text-lg">
             Reel<span className="text-primary">form</span>
           </span>

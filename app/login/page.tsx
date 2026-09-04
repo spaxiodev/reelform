@@ -4,8 +4,9 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import { SiteFooter } from "@/components/SiteFooter";
+import { SiteFooter, CONTACT_EMAIL } from "@/components/SiteFooter";
 import { trackEvent } from "@/lib/analytics";
+import { BrandMark } from "@/components/BrandMark";
 
 // Reasons /api/auth/callback can bounce someone back here. Anything not
 // listed is shown with its raw code, so a new provider error is diagnosable
@@ -29,6 +30,34 @@ const AUTH_NOTICES: Record<string, string> = {
 // hiding the resend button behind a typo.
 const UNCONFIRMED = /not confirmed/i;
 
+// The consent request itself has to say who is asking and how to withdraw,
+// so the sender identity sits right under the checkbox rather than in a
+// policy page three clicks away.
+function MarketingConsent({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const address = process.env.NEXT_PUBLIC_POSTAL_ADDRESS?.trim();
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <input
+        type="checkbox"
+        className="mt-1 accent-[var(--color-primary,currentColor)]"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="text-xs text-muted leading-relaxed">
+        Email me product updates and tips from Reelform now and then. Optional. Unsubscribe any
+        time from your account or the link in every email. Sent by Polidori.dev (Reelform)
+        {address ? `, ${address}` : ""}, {CONTACT_EMAIL}.
+      </span>
+    </label>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,6 +68,10 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
+  // Marketing consent. Off by default and asked for on its own, which is what
+  // CASL and Quebec's Law 25 require of an opt-in. Travels with the signup as
+  // user metadata (password) or on the callback URL (Google).
+  const [marketing, setMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(() => {
     const key = searchParams.get("notice");
@@ -83,10 +116,11 @@ function LoginForm() {
     setNotice(null);
     if (mode === "signup") trackEvent("signup_started", { method: "google" });
     const supabase = createSupabaseBrowser();
+    const marketingParam = mode === "signup" && marketing ? "&marketing=1" : "";
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/api/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${location.origin}/api/auth/callback?next=${encodeURIComponent(next)}${marketingParam}`,
       },
     });
     if (error) {
@@ -125,7 +159,11 @@ function LoginForm() {
         password,
         options: {
           emailRedirectTo: `${location.origin}/api/auth/callback`,
-          data: { username: handle, full_name: fullName.trim() },
+          data: {
+            username: handle,
+            full_name: fullName.trim(),
+            marketing_opt_in: marketing ? "true" : "false",
+          },
         },
       });
       if (error) {
@@ -166,7 +204,7 @@ function LoginForm() {
           pages stay reachable from here without a back button. */}
       <header className="flex items-center justify-between gap-4 px-6 md:px-10 py-5 border-b border-line">
         <Link href="/" className="flex items-center gap-3 w-fit">
-          <span className="rec-dot" aria-hidden />
+          <BrandMark />
           <span className="font-semibold tracking-tight text-lg">
             Reel<span className="text-primary">form</span>
           </span>
@@ -307,6 +345,8 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+
+            {mode === "signup" && <MarketingConsent checked={marketing} onChange={setMarketing} />}
 
             {error && <p className="text-danger text-sm">{error}</p>}
             {notice && <p className="text-primary text-sm">{notice}</p>}

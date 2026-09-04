@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { BrandMark } from "@/components/BrandMark";
 
 // Landing nav: two separate frosted pills (logo left, actions right) rather
 // than one centered bar: a distinct layout, with a coral CTA instead of a
@@ -36,7 +37,7 @@ export async function LandingNav() {
           href="/"
           className="glass-pill flex items-center gap-2.5 rounded-full px-4 py-2.5 md:px-5"
         >
-          <span className="rec-dot" aria-hidden />
+          <BrandMark />
           <span className="font-semibold tracking-tight text-lg">
             Reel<span className="text-primary">form</span>
           </span>

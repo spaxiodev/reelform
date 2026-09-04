@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 // Inherited by every route that doesn't define its own OG image.
 export const alt = "Reelform: direct an AI hero video, let Claude build the site around it";
@@ -11,7 +13,13 @@ const INK = "#2a1a13";
 const PRIMARY = "#dd4f26";
 const CREAM = "#faf5f1";
 
-export default function Image() {
+export default async function Image() {
+  // Satori can't load /public over HTTP, so the tile is read from disk and
+  // inlined as a data URI. This route is prerendered at build, where cwd is
+  // the project root.
+  const logo = await readFile(path.join(process.cwd(), "public", "logo.png"));
+  const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -27,9 +35,9 @@ export default function Image() {
           fontFamily: "sans-serif",
         }}
       >
-        {/* Wordmark with the record dot the app uses as its logo */}
+        {/* Logo tile beside the wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 20, height: 20, borderRadius: 999, background: PRIMARY }} />
+          <img src={logoSrc} width={44} height={44} alt="" style={{ borderRadius: 10 }} />
           <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: -0.5 }}>Reelform</div>
         </div>
 

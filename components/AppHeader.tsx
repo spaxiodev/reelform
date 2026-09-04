@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandMark } from "@/components/BrandMark";
 
 /**
  * The header worn by every signed-in screen: dashboard, account and create.
@@ -26,7 +27,7 @@ export function AppHeader({
     <header className="bg-bg border-b border-line">
       <div className="flex items-center justify-between gap-3 px-5 md:px-10 py-4 md:py-5">
         <Link href="/" className="flex items-center gap-3 shrink-0">
-          <span className="rec-dot" aria-hidden />
+          <BrandMark />
           <span className="font-semibold tracking-tight text-lg">
             Reel<span className="text-primary">form</span>
           </span>

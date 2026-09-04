@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CONTACT_EMAIL } from "@/lib/contact";
+import { BrandMark } from "@/components/BrandMark";
 
 // Re-exported for the pages that have always imported it from here.
 export { CONTACT_EMAIL };
@@ -42,7 +43,7 @@ export function SiteFooter() {
         <div className="flex flex-col md:flex-row gap-10 md:gap-16">
           <div className="md:flex-1">
             <Link href="/" className="flex items-center gap-3">
-              <span className="rec-dot" aria-hidden />
+              <BrandMark />
               <span className="font-semibold tracking-tight text-lg">
                 Reel<span className="text-primary-soft">form</span>
               </span>

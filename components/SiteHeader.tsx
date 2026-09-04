@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AccountBadge } from "@/components/AccountBadge";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { BrandMark } from "@/components/BrandMark";
 
 // Shared marketing-page header. Reads the session server-side so a signed-in
 // member never sees "Sign in / Start free" after clicking the logo, and so the
@@ -38,7 +39,7 @@ export async function SiteHeader() {
     <header className="bg-bg border-b border-line">
       <div className="flex items-center justify-between gap-3 px-5 md:px-10 py-4 md:py-5">
         <Link href="/" className="flex items-center gap-3 shrink-0">
-          <span className="rec-dot" aria-hidden />
+          <BrandMark />
           <span className="font-semibold tracking-tight text-lg">
             Reel<span className="text-primary">form</span>
           </span>

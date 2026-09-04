@@ -27,6 +27,7 @@ import { ClipCard, type ClipDraft, type Ratio } from "@/components/ClipCard";
 import { DeployPanel } from "@/components/DeployPanel";
 import { SiteChat, type ChatMessage } from "@/components/SiteChat";
 import { trackEvent } from "@/lib/analytics";
+import { BrandMark } from "@/components/BrandMark";
 
 const ERROR_SENTINEL = "\n<<<REELFORM_ERROR>>>";
 
@@ -670,7 +671,7 @@ export function Studio({
               way out of it. Logo home, then the breadcrumb back to the
               project list, then where you actually are. */}
           <Link href="/" className="flex items-center shrink-0" title="Reelform home">
-            <span className="rec-dot" aria-hidden />
+            <BrandMark />
             <span className="sr-only">Reelform home</span>
           </Link>
           <Link href="/dashboard" className="mono-label hover:!text-ink transition-colors shrink-0">

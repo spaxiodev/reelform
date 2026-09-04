@@ -11,6 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     // Matches --primary (sunset coral) in app/globals.css.
     theme_color: "#dd4f26",
-    icons: [{ src: "/icon.svg", type: "image/svg+xml", sizes: "any", purpose: "any" }],
+    icons: [
+      { src: "/icon.png", type: "image/png", sizes: "512x512", purpose: "any" },
+      { src: "/apple-icon.png", type: "image/png", sizes: "180x180", purpose: "any" },
+    ],
   };
 }
